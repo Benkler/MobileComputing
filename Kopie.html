@@ -2,31 +2,32 @@
 <html>
 <head>
     <meta charset="utf-8" />
-    <title>Mobile Computing Demo</title>
+    <title>Mobile Computing WallBall</title>
     <style>
         {        
             padding: 0;
             margin: 0;
         }
         body {
-            background-color: #F6D8CE;
+            background-color: #37038A;
         }
         canvas {
-            background: #F6D8CE;
+            background: #37038A;
             display: block;
             margin: 0 auto;
         }
         
         div {
-            background-color: #F6D8CE;
+            background-color: #F5F1CE;
         }
         
     </style>
+    <!-- Viewport setzt Inhalt auf passende breite je nach Gerät; initial scale das Zoom level beim laden; user scalable bedeuted zoomen-->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" />
 </head>
 
 <body onorientationchange="setScreen();">
-	<!--<center><button type="button" id="startBtn">Spiel im Vollbildmodus starten!</button></center>-->
+	
 
     <script>
 		
@@ -190,12 +191,20 @@
             //Höhe und Breite passend zum Seitenverhältnis
             var heightval;
             var widthval;
-			
+			//innerWidth/innerHeight < 4:3
+			if ((innerWidth / innerHeight) < ratio) {
+				//Scrollbalken verhindern => -16
+				widthval = window.innerWidth - 16;
+				heightval = (widthval / ratio) - 16;
+                canvas.style.height = heightval + "px";
+                canvas.style.width = widthval + "px";
+            //innerWidth/innerHeight >= 4:3
+			} else {
 				heightval = window.innerHeight - 16;
 				widthval = (heightval * ratio) - 16;
                 canvas.style.height = heightval + "px";
                 canvas.style.width = widthval + "px";
-					
+			}		
 		}
 		
 		function init(){
@@ -521,55 +530,31 @@
 			}
         }
         
-        //Ermittelt die Beschleunigung entsprechend der Bildschirmorientierung
+        //This is executed when site is rendered
         if (window.DeviceOrientationEvent) {
             window.addEventListener("devicemotion", function (event) {
                 switch (window.orientation) {
-                    case 0:
-                        accelx = event.accelerationIncludingGravity.x * (-1);
+                
+                    case 0:<!-- Normal Portrait: We want only landscape specific calculation: Use case 90°-->
+                       accely = event.accelerationIncludingGravity.y;;
+                        break;
+                    case 90:<!-- Normal  Landscape-->
+                        accely = event.accelerationIncludingGravity.y;
+                        break;
+                    case -90:<!--Inverted Landscape -->
                         accely = event.accelerationIncludingGravity.y * (-1);
                         break;
-                    case -90:
-                        accelx = event.accelerationIncludingGravity.y * (-1);
-                        accely = event.accelerationIncludingGravity.x;
-                        break;
-                    case 90:
-                        accelx = event.accelerationIncludingGravity.y;
-                        accely = event.accelerationIncludingGravity.x * (-1);
-                        break;
-                    case 180:
-                        accelx = event.accelerationIncludingGravity.x;
-                        accely = event.accelerationIncludingGravity.y;
+                  
+                    case 180:<!-- Inverse Portrait: We want only landscape specific calculation: Use case -90°-->
+                        accely = event.accelerationIncludingGravity.y * (-1);
                         break;
                 }
             }, true);
         } else {
-            alert("Sorry, ihr Gerät unterstützt keine Bildschirmorientierung!");
+            alert("Sorry no device Orientation supported");
         }
 		showInfoScreen('Spiel im Vollbildmodus starten!');
-	/*
-        function check_device(){
-            var ua = navigator.userAgent;
-            var checker = {
-                iphone: ua.match(/(iPhone|iPod|iPad)/),
-                blackberry: ua.match(/BlackBerry/),
-                android: ua.match(/Android/)
-            };
-            return checker;
-        }
-        
-        function openFullscreen(elem) {
-          if (elem.requestFullscreen) {
-            elem.requestFullscreen();
-          } else if (elem.mozRequestFullScreen) { // Firefox
-            elem.mozRequestFullScreen();
-          } else if (elem.webkitRequestFullscreen) { // Chrome, Safari and Opera
-            elem.webkitRequestFullscreen();
-          } else if (elem.msRequestFullscreen) { // IE/Edge
-            elem.msRequestFullscreen();
-          }
-        }        
-    */
+	
     </script>
 </body>
 </html>
