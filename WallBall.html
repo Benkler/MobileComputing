@@ -540,7 +540,7 @@
                         accelx = event.accelerationIncludingGravity.y;
                         accely = event.accelerationIncludingGravity.x * (-1);
                         break;
-                    case 90:<!-- Normal  -->
+                    case 90:<!-- Normal  Landscape-->
                      showInfoScreen("Case 90");
                         accelx = event.accelerationIncludingGravity.y;
                         accely = event.accelerationIncludingGravity.x * (-1);
@@ -550,12 +550,9 @@
                         accelx = event.accelerationIncludingGravity.x * (-1);
                         accely = event.accelerationIncludingGravity.y * (-1);
                         break;
-                    case 90:
-                     showInfoScreen("Case 90");
-                        accelx = event.accelerationIncludingGravity.y;
-                        accely = event.accelerationIncludingGravity.x * (-1);
-                        break;
+                  
                     case 180:
+                    showInfoScreen("Case 180");
                         accelx = event.accelerationIncludingGravity.x;
                         accely = event.accelerationIncludingGravity.y;
                         break;
