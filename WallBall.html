@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>Mobile Computing WallBall</title>
+    <style>
+        {        
+            padding: 0;
+            margin: 0;
+        }
+        body {
+            background-color: #37038A;
+        }
+        canvas {
+            background: #37038A;
+            display: block;
+            margin: 0 auto;
+        }
+        
+        div {
+            background-color: #F5F1CE;
+        }
+        
+    </style>
+    <!-- Viewport setzt Inhalt auf passende breite je nach Gerät; initial scale das Zoom level beim laden; user scalable bedeuted zoomen-->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" />
+</head>
+
+<body onorientationchange="setScreen();">
+	
+
+    <script>
+		
+		//Startzeit des Timers
+        var startTime;
+		
+		//Spielfeld
+        var canvas;
+		
+		//Kontext des Spielfeldes
+        var ctx;
+		//Bildschirmverhältnis
+        var ratio;
+        		
+        const BALLRADIUS = 12;
+        const BALLINERTIA = 0.8
+        //Wandträgheit legt fest, wie weit der Ball zurückspringt
+        const WALLINERTIA = 0.85;
+        //Ballwiderstand verhindert endloses rollen
+        const BALLFRICTION = 0.95;
+        //Die Maximalbeschleunigung verhindert durchtunneln durch die Wand
+        const MAXACCEL = BALLRADIUS - 3;
+        
+        //Verbreitert virtuell die Hindernisse um Kollisionen mit der Diagonale zu vermeiden 
+		const DIAGERROR = 6;
+                
+		//Startkoordinaten Ball
+        const XINIT = 770;
+        const YINIT = 200 - BALLRADIUS;
+		
+		//Zeitintervall für Bildschirmwiederholung
+		var refresh = 10;
+		//ID von setIntervall;
+		var refreshID;		
+        
+        //Koordinatenänderung des Balles innerhalb eines Intervalls
+        var ballSpeedx = 0;
+        var ballSpeedy = 0;
+        //Trägheit des Balles
+        var ballInertiax = BALLINERTIA;
+        var ballInertiay = BALLINERTIA;
+        //Trägheitsbehaftete Beschleunigung
+        //phoneTilt = accel * ballInertia;
+        var phoneTiltx = 0;
+        var phoneTilty = 0;
+        //Aktuell ausgelesene Beschleunigung aus dem Beschleunigungssensor
+        var accelx = 0.0;
+        var accely = 0.0;
+        //Beschleunigung im letzten Intervall
+        // aktuelle Beschleunigung * letzte < 0 bedeutet Richtungsänderung
+        var lastAccx = 0;
+        var lastAccy = 0;
+        //Position des Balls
+        var x = XINIT;
+        var y = YINIT;
+        //Hindernis mit dem der Ball im letzten Intervall kollidiert ist
+        var lastBrickx = -1;
+        var lastBricky = -1;
+        //Anzahl der Hindernisse und deren Dicke
+        var bricks = [];
+        var brickCount = 34;
+        var brickThickness = 8;
+        //Hindernisse im Spiel
+        bricks[0] = { x: 712, y: 200, width: 88, height: brickThickness };
+        bricks[1] = { x: 712, y: 75, width: brickThickness, height: 198 };
+        bricks[2] = { x: 712, y: 305, width: brickThickness, height: 55 };
+        bricks[3] = { x: 623, y: 305, width: 96, height: brickThickness };
+        bricks[4] = { x: 664, y: 35, width: 136, height: brickThickness };
+        bricks[5] = { x: 584, y: 75, width: 135, height: brickThickness };
+        bricks[6] = { x: 512, y: 35, width: 80, height: brickThickness };
+        bricks[7] = { x: 520 - brickThickness, y: 0, width: brickThickness, height: 80 };
+        bricks[8] = { x: 460, y: 35, width: brickThickness, height: 160 };
+        bricks[9] = { x: 460, y: 240, width: brickThickness, height: 28 };        
+        bricks[10] = { x: 515, y: 170, width: brickThickness, height: 80 };
+        bricks[11] = { x: 460, y: 130, width: 38, height: brickThickness };        
+        bricks[12] = { x: 545, y: 130, width: 120, height: brickThickness };
+        bricks[13] = { x: 240, y: 305, width: 325, height: brickThickness };
+        bricks[14] = { x: 200, y: 70, width: 260, height: brickThickness };
+        bricks[15] = { x: 100, y: 0, width: brickThickness, height: 38 };
+        bricks[16] = { x: 0, y: 30, width: 108, height: brickThickness };        
+        bricks[17] = { x: 0, y: 70, width: 168, height: brickThickness };
+        bricks[18] = { x: 160, y: 70, width: brickThickness, height: 55 };
+        bricks[19] = { x: 160, y: 170, width: brickThickness, height: 48 };
+        bricks[20] = { x: 120, y: 210, width: 270, height: brickThickness };
+        bricks[21] = { x: 230, y: 120, width: brickThickness, height: 98 };
+        bricks[22] = { x: 310, y: 70, width: brickThickness, height: 90 };
+        bricks[23] = { x: 160, y: 247, width: brickThickness, height: 63 };        
+        bricks[24] = { x: 160, y: 260, width: 300, height: brickThickness };
+        bricks[25] = { x: 515, y: 290, width: brickThickness, height: 23 };       
+        bricks[26] = { x: 610, y: 180, width: 110, height: brickThickness };
+        bricks[27] = { x: 620, y: 265, width: 100, height: brickThickness };
+        bricks[28] = { x: 380, y: 360, width: brickThickness, height: 40 };
+        bricks[29] = { x: 500, y: 305, width: brickThickness, height: 55 };                
+        bricks[30] = { x: 240, y: 305, width: brickThickness, height: 55 };                
+        bricks[31] = { x: 62, y: 352, width: 186, height: brickThickness };       
+        bricks[32] = { x: 70 - brickThickness, y: 140, width: brickThickness, height: 220 };
+		//Zielmauer
+        bricks[33] = { x: 0, y: 180, width: 70, height: brickThickness };
+        //Anzahl der Löcher und deren Radius
+        var holes = [];
+        var holesCount = 15;
+        var holeRadius = BALLRADIUS * 1.5;
+        holes[0] = { x: 800 * 0.77, y: 30, radius: holeRadius };
+        holes[1] = { x: 520, y: 127, radius: holeRadius };
+        holes[2] = { x: 693, y: 130, radius: holeRadius };
+        holes[3] = { x: 200, y: 18, radius: holeRadius };
+        holes[4] = { x: 330, y: 49, radius: holeRadius };
+        holes[5] = { x: 123, y: 49, radius: holeRadius };
+        holes[6] = { x: 160, y: 150, radius: holeRadius };
+        holes[7] = { x: 462, y: 221, radius: holeRadius };
+        holes[8] = { x: 380, y: 160, radius: holeRadius };
+        holes[9] = { x: 187, y: 287, radius: holeRadius };
+        holes[10] = { x: 517, y: 270, radius: holeRadius };
+        holes[11] = { x: 595, y: 315, radius: holeRadius };
+        holes[12] = { x: 20, y: 380, radius: holeRadius };
+        holes[13] = { x: 650, y: 225, radius: holeRadius };
+        holes[14] = { x: 120, y: 260, radius: holeRadius };
+        //Spiel läuft?
+        var running = false;
+		//Ball im Loch?
+		var pocketed = false;
+        //Zeigt einen Infobildschirm unabhängig vom Spielfeld
+		function showInfoScreen(txt){
+            var showDiv = document.createElement('div');
+            showDiv.id = "showDiv";
+            showDiv.style.heihght = 400;
+            showDiv.style.textDecoration = "underline";
+            showDiv.style.textAlign = "center";
+            showDiv.style.paddingTop = "100px";
+            showDiv.style.background = "#F6D8CE";
+            document.body.appendChild(showDiv);
+			var btnText = document.createTextNode(txt);
+			showDiv.appendChild(btnText);
+			showDiv.addEventListener("click", function() {	
+				showDiv.parentNode.removeChild(showDiv);
+				initCanvas();
+				init();
+                //Startet Bildschirmwiederholung für Spiel
+				refreshID = setInterval(draw, refresh);
+                canvas.webkitRequestFullScreen();                
+			}, false);
+		}
+		
+        //Setzt die Attribute für das Spielfeld
+		function initCanvas(){
+			canvas = document.createElement('canvas');		
+			canvas.id = "myCanvas";
+			canvas.width = "800";
+			canvas.height = "400";
+			canvas.style = "border:3px solid #61210B;";		
+			document.body.appendChild(canvas);
+			ctx = canvas.getContext("2d");
+		}
+		
+        //Setzt die Größenverhältnisse innerhalb des Spielfeldes passend zum Bildschirmverhältnis
+		function setScreen(){
+            var width = canvas.width;
+            var height = canvas.height;        
+            //canvas.webkitRequestFullScreen();                
+			ratio = width / height;
+            //Höhe und Breite passend zum Seitenverhältnis
+            var heightval;
+            var widthval;
+			//innerWidth/innerHeight < 4:3
+			if ((innerWidth / innerHeight) < ratio) {
+				//Scrollbalken verhindern => -16
+				widthval = window.innerWidth - 16;
+				heightval = (widthval / ratio) - 16;
+                canvas.style.height = heightval + "px";
+                canvas.style.width = widthval + "px";
+            //innerWidth/innerHeight >= 4:3
+			} else {
+				heightval = window.innerHeight - 16;
+				widthval = (heightval * ratio) - 16;
+                canvas.style.height = heightval + "px";
+                canvas.style.width = widthval + "px";
+			}		
+		}
+		
+		function init(){
+			setScreen();
+            //Timer starten für Spielzeit
+			startTime = new Date();
+            
+			//Trägheit des Balles
+			ballInertiax = BALLINERTIA;
+			ballInertiay = BALLINERTIA;
+			//Trägheitsbehaftete Beschleunigung
+			//phoneTilt = accel * ballInertia;
+			phoneTiltx = 0;
+			phoneTilty = 0;
+			//Aktuell ausgelesene Beschleunigung aus dem Beschleunigungssensor
+			accelx = 0.0;
+			accely = 0.0;
+			//Beschleunigung im letzten Intervall
+			// aktuelle Beschleunigung * letzte < 0 bedeutet Richtungsänderung
+			lastAccx = 0;
+			lastAccy = 0;
+			//Position des Balls
+			x = XINIT;
+			y = YINIT;
+			//Hindernis mit dem der Ball im letzten Intervall kollidiert ist
+			lastBrickx = -1;
+			lastBricky = -1;			
+			
+			running = true;
+			pocketed = false;
+			refresh = 10;
+		}
+		
+        //Prüft ob ein Wert innerhalb des Intervalls [smallv,bigv] liegt
+        //Gibt value, smallv oder bigv zurück
+        function valueBetween(value, smallv, bigv) {
+            return value < smallv ? smallv : value > bigv ? bigv : value;
+        }
+        //Entfernung zwischen zwei Koordinaten mit Phytagoras
+        function dist(x1, y1, x2, y2) {
+            var dx = x1 - x2, dy = y1 - y2;
+            return Math.sqrt(dx * dx + dy * dy);
+        }
+        //Prüft, ob der Ball den Bereich eines Bricks verlässt und daran vorbeifallen kann
+        function checkBalltoBrick(){
+            //Ballträgheit wieder auf den Ausgangswert setzen, wenn sich der Ball nicht mehr entlang des Hindernis bewegt
+            if (lastBrickx > -1 && valueBetween(x, bricks[lastBrickx].x - DIAGERROR, bricks[lastBrickx].x + bricks[lastBrickx].width + DIAGERROR) != x) {
+                ballInertiay = BALLINERTIA;
+                lastBrickx = -1;
+            }
+            if (lastBricky > -1 && !valueBetween(y, bricks[lastBricky].y - DIAGERROR, bricks[lastBricky].y + bricks[lastBricky].width) + DIAGERROR != y) {
+                ballInertiax = BALLINERTIA;
+                lastBricky = -1;
+            }
+        }
+        //Prüft für alle Hindernisse, ob der Ball damit kollidiert
+        function collisionDetection() {
+            for (var c = 0; c < brickCount; c++) {
+                var b = bricks[c];
+                //Abstand < BALLRADIUS bedeutet Kollision
+                if (dist(valueBetween(x, b.x, b.x + b.width), valueBetween(y, b.y, b.y + b.height), x, y) < BALLRADIUS) {
+                    //Prüft ob die Kollision von der x oder der y Koordinate her erfolgt
+                    if (valueBetween(x, b.x - DIAGERROR, b.x + b.width + DIAGERROR) == x) {
+                        //Ball kommt von unten
+                        if (y > b.y + b.height) {
+							//Zielmauer?
+							if(c == 33){
+								c = brickCount;
+								running = false;
+							}  
+							handleCollision("fromBelow");
+                            //Falls keine Bewegung mehr stattfindet, Ball direkt an das Hindernis setzen
+                            //damit es keine Überlappung gibt
+                            y = b.y + b.height + BALLRADIUS;
+                            //Ball kommt von oben
+                        } else {
+                            handleCollision("fromAbove");
+                            y = b.y - BALLRADIUS;
+                        }
+                        lastBrickx = c;
+                        //Ball kommt von der Seite
+                    } else if (valueBetween(y, b.y - DIAGERROR, b.y + b.height + DIAGERROR) == y) {
+                        //Ball kommt von rechts
+                        if (x > b.x + b.width) { //Rechts
+                            handleCollision("fromRight");
+                            x = b.x + b.width + BALLRADIUS;
+                            //Ball kommt von links
+                        } else {
+                            handleCollision("fromLeft");
+                            x = b.x - BALLRADIUS;
+                        }
+                        lastBricky = c;
+                    } /*else {
+                        var xDiff;
+                        var yDiff;
+                        var faktorx = 1;
+                        var faktory = 1;
+                        if(x > b.x + b.width){
+                            xDiff = x - (b.x + b.width);
+                        } else {
+                            xDiff = b.x - x;
+                            faktorx = -1;
+                        }
+                        if(y > b.y + b.height){
+                            yDiff = y - (b.y + b.height);
+                        } else {
+                            yDiff = b.y - y;
+                            faktory = -1;
+                        }
+                        y = -(xDiff*xDiff)/(2*yDiff*yDiff) + Math.sqrt((xDiff*xDiff)/(2*yDiff*yDiff)*(xDiff*xDiff)/(2*yDiff*yDiff)+(BALLRADIUS*BALLRADIUS));
+                        x = (xDiff/yDiff) * y;
+                        if (faktorx < 0) x = b.x - x
+                        else x = b.x + b.width + x;
+                        if (faktory < 0) y = b.y - y
+                        else y = b.y + b.height + y;
+                        handleCollision();
+                    }*/
+                }
+                checkBalltoBrick();
+            }
+            //Überprüfung der Kollision mit den Seitenwänden
+            if (x + ballSpeedx > canvas.width - BALLRADIUS) {
+                handleCollision("rightWall");
+                x = canvas.width - BALLRADIUS;
+            }
+            if (x + ballSpeedx < BALLRADIUS) {
+                handleCollision("leftWall");
+                x = BALLRADIUS;
+            }
+            if (y + ballSpeedy < BALLRADIUS) {
+                handleCollision("topWall");
+                y = BALLRADIUS;
+            }
+            if (y + ballSpeedy > canvas.height - BALLRADIUS) {
+                handleCollision("bottomWall");
+                y = canvas.height - BALLRADIUS;
+            }
+        }
+        //Setzt Werte für abprallen entsprechend der Kollision
+        function handleCollision(ballDir) {
+            switch (ballDir) {
+                case "fromAbove":
+                    if (phoneTilty > 0) {
+                        //Ballträgheit langsam auf 0 erniedrigen, solange das Gerät in Richtung Hindernis
+                        //gekippt ist, verhindert dauerndes abprallen am Hindernis
+                        if (ballInertiay > 0.1) ballInertiay = ballInertiay / 1.2
+                        else ballInertiay = 0;
+                    }
+                case "bottomWall":
+                    ballSpeedy = -(ballSpeedy * WALLINERTIA);
+                    break;
+                case "fromBelow":
+                    if (phoneTilty < 0) {
+                        if (ballInertiay > 0.1) ballInertiay = ballInertiay / 1.2
+                        else ballInertiay = 0;
+                    }
+                case "topWall":
+                    ballSpeedy = -(ballSpeedy * WALLINERTIA);
+                    break;
+                case "fromLeft":
+                    if (phoneTiltx > 0) {
+                        if (ballInertiax > 0.1) ballInertiax = ballInertiax / 1.2
+                        else ballInertiax = 0;
+                    }
+                case "rightWall":
+                    ballSpeedx = -(ballSpeedx * WALLINERTIA);
+                    break;
+                case "fromRight":
+                    if (phoneTiltx < 0) {
+                        if (ballInertiax > 0.1) ballInertiax = ballInertiax / 1.2
+                        else ballInertiax = 0;
+                    }
+                case "leftWall":
+                    ballSpeedx = -(ballSpeedx * WALLINERTIA);
+                    break;
+                default:
+                    ballSpeedx = -(ballSpeedx * WALLINERTIA * 0.5);
+                    ballSpeedy = -(ballSpeedy * WALLINERTIA * 0.5);                    
+            }
+        }
+        //Baut eine "magnetische" Anziehung auf, wenn die Kugel über den Lochrand fährt
+        function handleEdgeofHole(holex, holey, distToHole) {
+            var holeAttraction = ((BALLRADIUS * 1.6) - (distToHole * 0.85)) / (BALLRADIUS * 1.6) * 0.99;
+            if (holeAttraction > 0) {
+                var holeBally = y - holey;
+                var holeBallx = x - holex;
+                var holeBallAngle = (Math.atan2(holeBallx, holeBally) * 180 / Math.PI) - 90;
+                distToHole = distToHole * holeAttraction;
+                y = y + distToHole * Math.sin((holeBallAngle) * 2 * Math.PI / 360);
+                x = x + distToHole * (Math.cos((holeBallAngle) * 2 * Math.PI / 360) * (-1));
+            }
+        }
+        //Prüft, ob die Kugel in ein Loch fällt
+        function handleHoles() {
+            for (var i = 0; i < holesCount; i++) {
+                var distToHole = dist(x, y, holes[i].x, holes[i].y);
+                if (distToHole < holeRadius - BALLRADIUS){
+                    running = false;
+					pocketed = true;
+				}
+                if (distToHole < holeRadius * 2)
+                    handleEdgeofHole(holes[i].x, holes[i].y, distToHole);
+            }
+        }
+        //Zeichnet die aktuelle Position des Balles
+        function drawBall() {
+            //Neues Tempo = (Altes + Neigung) * Reibung
+            ballSpeedx = (ballSpeedx + phoneTiltx) * BALLFRICTION;
+            ballSpeedy = (ballSpeedy + phoneTilty) * BALLFRICTION;
+            //Tunneln verhindern
+            if (ballSpeedx > MAXACCEL)
+                ballSpeedx = MAXACCEL;
+            if (ballSpeedx < -MAXACCEL)
+                ballSpeedx = -MAXACCEL;
+            if (ballSpeedy > MAXACCEL)
+                ballSpeedy = MAXACCEL;
+            if (ballSpeedy < -MAXACCEL)
+                ballSpeedy = -MAXACCEL;
+            //Wenn Kugel sehr langsam ist soll sie still liegen
+            if (Math.abs(ballSpeedx) > 0.01)
+                x = x + ballSpeedx;
+            if (Math.abs(ballSpeedy) > 0.01)
+                y = y + ballSpeedy;
+            //Ball zeichnen    
+            ctx.beginPath();
+            ctx.arc(x, y, BALLRADIUS, 0, Math.PI * 2);
+            ctx.fillStyle = "#A4A4A4";
+            ctx.fill();
+            ctx.closePath();
+        }
+        //Hindernisse zeichnen
+        function drawBricks() {
+            for (var c = 0; c < brickCount; c++) {
+                ctx.beginPath();
+                ctx.rect(bricks[c].x, bricks[c].y, bricks[c].width, bricks[c].height);
+                ctx.fillStyle = "#61210B";
+                ctx.fill();
+                ctx.closePath();
+            }
+        }
+        //Löcher zeichnen
+        function drawHoles() {
+            for (var i = 0; i < holesCount; i++) {
+                ctx.beginPath();
+                ctx.arc(holes[i].x, holes[i].y, holes[i].radius, 0, Math.PI * 2);
+                
+                //Lässt das Loch zur Mitte dunkler werden
+                var grd = ctx.createRadialGradient(holes[i].x, holes[i].y, 2, holes[i].x, holes[i].y, holes[i].radius);
+                grd.addColorStop(0, "black");
+                grd.addColorStop(1, "#757575");
+                ctx.fillStyle = grd;//"#000000";
+                ctx.fill();
+                ctx.closePath();
+            }
+        }
+        //Kennzeichnet Start und Ziel des Spielfeldes
+        function drawStartStop() {
+            ctx.font = "28px Calibri";
+            ctx.fillStyle = "#8B2323";
+            ctx.fillText("Start", 730, 198);
+            ctx.fillText("Ziel", 10, 215);
+        }
+        
+        //Aktualisiert die Stoppuhr
+        function setStopWatch() {
+            //if (stopWatchRunning == false) {
+            //return;
+            //}
+            var currentdate = new Date();
+            var duration = new Date(currentdate - startTime);
+            var minutes = duration.getMinutes();
+            if (minutes < 10) minutes = "0" + minutes;
+            var seconds = duration.getSeconds();
+            if (seconds < 10) seconds = "0" + seconds;
+            return minutes + ":" + seconds;
+        }
+		
+        //Zeichnet den Wert der Stoppuhr
+		function drawStopWatch(watchText){
+            ctx.font = "28px Calibri";
+            ctx.fillStyle = "#8B2323";
+            ctx.fillText(watchText, 17, 22);
+		}
+		
+        //Aktuellen Spielzustand zeichnen
+        function draw() {
+            if (running) {
+                setScreen();
+				//Ball bewegt sich von der Wand weg, Ballträgheit zurücksetzen
+                if (lastAccx * accelx < 0){
+					ballInertiax = BALLINERTIA;
+					lastBricky = -1;
+				}
+                if (lastAccy * accely < 0) {
+					ballInertiay = BALLINERTIA;
+					lastBrickx = -1;
+				}
+                
+                lastAccx = accelx;
+                lastAccy = accely;
+                
+                phoneTiltx = accelx * ballInertiax;
+                phoneTilty = -accely * ballInertiay;
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                drawBricks();
+                drawHoles();
+                collisionDetection();
+                drawStartStop();
+                drawStopWatch(setStopWatch());
+                drawBall();
+                handleHoles();
+            } else {
+				if (!pocketed){
+					//Bildschirmwiederholung stoppen
+					clearInterval(refreshID);
+					//Canvas löschen
+					canvas.parentNode.removeChild(canvas);					
+					showInfoScreen("Gewonnen! Zeit: " + setStopWatch() + " zum Wiederholen klicken.");
+				} else {
+					startTime = new Date();
+					init();
+				}
+			}
+        }
+        
+        //Ermittelt die Beschleunigung entsprechend der Bildschirmorientierung
+        if (window.DeviceOrientationEvent) {
+            window.addEventListener("devicemotion", function (event) {
+                switch (window.orientation) {
+                
+                    case 0:<!-- Normal Portrait: We want only landscape specific calculation: Use case 90°-->
+                        showInfoScreen("Case 0");
+                        accelx = event.accelerationIncludingGravity.y;
+                        accely = event.accelerationIncludingGravity.x * (-1);
+                        break;
+                    case 90:<!-- Normal 
+                     showInfoScreen("Case 90");
+                        accelx = event.accelerationIncludingGravity.y;
+                        accely = event.accelerationIncludingGravity.x * (-1);
+                        break;
+                    case -90:
+                     showInfoScreen("Case -90");
+                        accelx = event.accelerationIncludingGravity.x * (-1);
+                        accely = event.accelerationIncludingGravity.y * (-1);
+                        break;
+                    case 90:
+                     showInfoScreen("Case 90");
+                        accelx = event.accelerationIncludingGravity.y;
+                        accely = event.accelerationIncludingGravity.x * (-1);
+                        break;
+                    case 180:
+                        accelx = event.accelerationIncludingGravity.x;
+                        accely = event.accelerationIncludingGravity.y;
+                        break;
+                }
+            }, true);
+        } else {
+            alert("Sorry, ihr Gerät unterstützt keine Bildschirmorientierung!");
+        }
+		showInfoScreen('Spiel im Vollbildmodus starten!');
+	
+    </script>
+</body>
+</html>
