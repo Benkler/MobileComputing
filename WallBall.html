@@ -55,10 +55,14 @@
         const BALLRADIUS = 12;
         var ballX = 0;
         var ballY = 0;
-        
         var ballSpeedX = 0;
         var ballSpeedY = 0;
         const ballSpeedMax = 2;
+        
+        var bricks = [];
+        var amountOfBricks = 30; //Needs to be multiple of amountOfBricksPerRow
+        var amountOfBricksPerRow = 10; 
+        var brickHeight = 15 ;
         
         
         //Var to save current acceleration in x direction
@@ -139,13 +143,15 @@
             //Timer starten für Spielzeit
 			startTime = new Date();
             
+            initBricks();
+            
             //start coordinate rectangle
 			rectY = canvas.height - (rectHeight + 2); //Y coordinate at bottom of field plus 2 Pixel distance
             rectX = (canvas.width / 2) - (rectWidth / 2); //Start x coordinate in middle
 		    
             //Max/Min value for the rectangle
             maxX = canvas.width - (rectWidth + 1); 
-            minX = 1; 
+            minX = 1;   
             
             //start ball in middle
             ballX = canvas.width / 2;
@@ -163,7 +169,28 @@
 			running = true;
 			loose = false;
 			refresh = 10;
+            
+            
 		}
+        /*
+        - Several Rows of Bricks, Width dependent on Screen Size
+        */
+        function initBricks(){
+            var amountOfRows = amountOfBricks / amountOfBricksPerRow;
+        
+            //  several rows with bricks, each of them having 1 px  margin right and left
+            var brickWidth = (canvas.width /  amountOfBricksPerRow) - 2;
+            
+            for (var counter = 0; counter < amountOfBricks; counter++){
+               var row = Math.floor(counter / amountOfBricksPerRow); //Determine row
+               var col =  counter % amountOfBricksPerRow;
+               var brickX = col * (brickWidth)+ col*2 + 1 ; 
+               var brickY = row* brickHeight + row +1;
+               bricks[counter] = { x: brickX , y: brickY, width: brickWidth};
+        
+            }
+        
+        }
 		
         //Prüft ob ein Wert innerhalb des Intervalls [smallv,bigv] liegt
         //Gibt value, smallv oder bigv zurück
@@ -175,7 +202,17 @@
             return smallv < value && value < bigv;
         }
         
+        function drawBricks (){
+            for(var counter = 0; counter < amountOfBricks; counter++ ){
+                ctx.beginPath();
+                ctx.rect(bricks[counter].x, bricks[counter].y, bricks[counter].width, brickHeight);
+                ctx.fillStyle = "#61210B";
+                ctx.fill();
+                ctx.closePath();
+            
+            }
         
+        }
        
         
        
@@ -318,6 +355,7 @@
                 collisionDetection();
                 drawRectangle();
                 drawBall();
+                drawBricks();
                 
                 
             } else {
