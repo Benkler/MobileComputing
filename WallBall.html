@@ -47,7 +47,7 @@
         var maxX = 800; //To be set 
         var minX = 1; // 1 px away from left wall
         const rectHeight = 10;
-        const rectWidth = 50;
+        const rectWidth = 90;
         var rectX = 0;
         var rectY = 0;
         
@@ -57,7 +57,8 @@
         var ballY = 0;
         
         var ballSpeedX = 0;
-        var ballSpeedY = -9;
+        var ballSpeedY = 0;
+        const ballSpeedMax = 2;
         
         
         //Var to save current acceleration in x direction
@@ -149,8 +150,9 @@
             //start ball in middle
             ballX = canvas.width / 2;
             ballY = canvas.height / 2;
+            
             ballSpeedX = 0;
-            ballSpeedY  = -3;
+            ballSpeedY  = -ballSpeedMax;
         
 			accelx = 0.0;
 		
@@ -193,7 +195,7 @@
         
         function drawRectangle(){
         
-        var newRectX = rectX + accelx *2;
+        var newRectX = rectX + accelx *4;
         
         rectX = valueBetween(newRectX, minX, maxX);
         
@@ -224,13 +226,13 @@
             //Check Wall Contact Right Wall
             if (ballX + ballSpeedX > canvas.width - BALLRADIUS) {
                 handleWallContact("right");
-                x = canvas.width - BALLRADIUS;
+                ballX = canvas.width - BALLRADIUS;
             }
             
             //Check Wall COntact Left Wall
             if (ballX + ballSpeedX < BALLRADIUS) {
-                handleWallContact(left);
-                x = BALLRADIUS;
+                handleWallContact("left");
+                ballX = BALLRADIUS;
             }
             
             //Check Wall contact Top
@@ -245,28 +247,58 @@
         }
         
         
+        /*
+        - Handle Contact with rectangle. 
+        - Contact on the left side result in left direction ind vice versa
+        - Difference to middle of rectangle determines resulting velocity to left/right
+        
+        */
         function handleRectContact(){
         
-            ballSpeedX = -ballSpeedX;
+            var middleOfRectangleX = rectX + (rectWidth / 2);
+            var differenceBallToMiddle = middleOfRectangleX - ballX;
+            
+            var newSpeedX = -differenceBallToMiddle * 0.1;
+            
+            ballSpeedX = calculateMaxSpeed(newSpeedX);
             ballSpeedY = -ballSpeedY;
+            
+            
+            
         }
+        
+        function calculateMaxSpeed(speed){
+        
+        if(speed < - ballSpeedMax) return -ballSpeedMax;
+        
+        if (speed > ballSpeedMax) return ballSpeedMax;
+        
+        return speed;
+        
+        }
+        
         function handleTopContact(){
         
-            ballSpeedX = -ballSpeedX;
+           
             ballSpeedY = -ballSpeedY;
         
         }
         
+        
+        /*
+        - Handle wall Contact
+        - So far, left and right hav same behaviour
+        */
         function handleWallContact(wallSide){
         
             switch(wallSide) {
         
                 case "left":
-                //Do sth
+                ballSpeedX = - ballSpeedX;
                 break;
          
                 case "right":
-                //Do sth
+                 ballSpeedX = - ballSpeedX;
                 break;
          
                 default:
