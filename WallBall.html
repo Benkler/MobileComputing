@@ -47,7 +47,7 @@
         var maxX = 800; //To be set 
         var minX = 1; // 1 px away from left wall
         const rectHeight = 10;
-        const rectWidth = 90;
+        var rectWidth = 90; //Set when selecting level
         var rectX = 0;
         var rectY = 0;
         
@@ -57,7 +57,7 @@
         var ballY = 0;
         var ballSpeedX = 0;
         var ballSpeedY = 0;
-        const ballSpeedMax = 2;
+        var ballSpeedMax = 2; //Set again when selecting level
         
         var bricks = [];
         var amountOfBricks = 30; //Needs to be multiple of amountOfBricksPerRow
@@ -74,31 +74,114 @@
         
         //Show InfoScreen, start Game on Click
 		function showInfoScreen(txt){
+            //Main Info Screen
             var showDiv = document.createElement('div');
             showDiv.id = "showDiv";
             showDiv.style.height = 400;
-            showDiv.style.textDecoration = "underline";
             showDiv.style.textAlign = "center";
-            showDiv.style.paddingTop = "100px";
+            showDiv.style.paddingTop = "30px";
             showDiv.style.background = "#F6D8CE";
             document.body.appendChild(showDiv);
-			var btnText = document.createTextNode(txt);
+            var btnText = document.createTextNode(txt);
 			showDiv.appendChild(btnText);
-			showDiv.addEventListener("click", function() {	
-			showDiv.parentNode.removeChild(showDiv);
-                
-           
-				initPitch();
-				init();
-                
-                //Set page refresh for game ==> Execute draw() function
-				refreshID = setInterval(draw, refresh);
-                
-                //Only works for Chrome
-               // canvas.webkitRequestFullScreen();                
-			}, false);
+            
+            
+            //Easy Selector
+            var easyDiv = document.createElement('div');
+            easyDiv.id = "easyDiv";
+            easyDiv.style.height = 50;
+            easyDiv.style.textDecoration = "underline";
+            easyDiv.style.textAlign = "center";
+            easyDiv.style.paddingTop = "20px";
+            easyDiv.style.background = "#32CD32";
+            var easyText = document.createTextNode("Easy");
+            easyDiv.appendChild(easyText);
+            easyDiv.addEventListener("click", function(){
+               
+                startGame("easy");
+            }, false);
+            showDiv.appendChild(easyDiv);
+            
+            //medium Selector
+            var mediumDiv = document.createElement('div');
+            mediumDiv.id = "mediumDiv";
+            mediumDiv.style.height = 50;
+            mediumDiv.style.textDecoration = "underline";
+            mediumDiv.style.textAlign = "center";
+            mediumDiv.style.paddingTop = "20px";
+            mediumDiv.style.background = "#ffa500";
+            var mediumText = document.createTextNode("medium");
+            mediumDiv.appendChild(mediumText);
+            mediumDiv.addEventListener("click", function(){
+               
+                startGame("medium");
+            }, false);
+            showDiv.appendChild(mediumDiv);
+            
+            
+            //heavy Selector
+            var heavyDiv = document.createElement('div');
+            heavyDiv.id = "heavyDiv";
+            heavyDiv.style.height = 50;
+            heavyDiv.style.textDecoration = "underline";
+            heavyDiv.style.textAlign = "center";
+            heavyDiv.style.paddingTop = "20px";
+            heavyDiv.style.background = "#990000";
+            var heavyText = document.createTextNode("heavy");
+            heavyDiv.appendChild(heavyText);
+            heavyDiv.addEventListener("click", function(){
+               
+                startGame("heavy");
+            }, false);
+            showDiv.appendChild(heavyDiv);
+            
+            
+            
+			
 		}
 		
+        function startGame(level){
+            //delete ShowDiv and Children
+            var showScreen = document.getElementById("showDiv");
+            showScreen.parentNode.removeChild(showDiv);
+                
+            
+            switch(level){
+            
+            case "easy":
+                rectWidth = 120;
+                ballSpeedMax = 1.5;
+                break;
+                
+            case "medium":
+                rectWidth = 90;
+                ballSpeedMax = 2;
+                break;
+                
+            case "heavy":
+                rectWidth = 70;
+                ballSpeedMax = 2.5;
+                break;
+            
+            default:
+                alert("No Such Level!");
+                rectWidth = 120;
+            
+            
+            }
+            
+			initPitch();
+			init();
+                
+            //Set page refresh for game ==> Execute draw() function
+            refreshID = setInterval(draw, refresh);
+            
+            //Only works for Chrome
+            canvas.webkitRequestFullScreen(); 
+                     
+            
+        }
+        
         //Setzt die Attribute für das Spielfeld
 		function initPitch(){
 			canvas = document.createElement('canvas');		
@@ -116,7 +199,7 @@
             //get proportions of canvas
             var width = canvas.width;
             var height = canvas.height;        
-                            
+                           
 			ratio = width / height; // 800/400=2
             var heightval;
             var widthval;
@@ -158,7 +241,7 @@
             ballY = canvas.height / 2;
             
             ballSpeedX = 0;
-            ballSpeedY  = -ballSpeedMax;
+            ballSpeedY  = ballSpeedMax;
         
         
 			accelx = 0.0;
@@ -367,7 +450,7 @@
             
             var newSpeedX = 0;
             
-            if(Math.abs( differenceBallToMiddle) < rectWidth * 0.1){
+            if(Math.abs( differenceBallToMiddle) < rectWidth * 0.07){
               newSpeedX = 0;
             }else{
                newSpeedX = -differenceBallToMiddle * 0.1;
@@ -441,14 +524,17 @@
                      
 					//Stop Screen Refresh
 					clearInterval(refreshID);
-                    
 					//Remove Canvas!
 					canvas.parentNode.removeChild(canvas);					
-					//showInfoScreen("Verloren! Zeit: " + setStopWatch() + " zum Wiederholen klicken.");
-                    showInfoScreen("Verloren!");
+					showInfoScreen("Verloren! Zum Wiederholen klicken.");
+                    
 				} else {
-					startTime = new Date();
-					init();
+					//Stop Screen Refresh
+					clearInterval(refreshID);
+					//Remove Canvas!
+					canvas.parentNode.removeChild(canvas);					
+					showInfoScreen("Gewonnen! Zeit: " + setStopWatch() + " zum Wiederholen klicken.");
+                    
 				}
 			}
         }
