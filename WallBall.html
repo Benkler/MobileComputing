@@ -35,7 +35,7 @@
         var startTime;
 		
 		//Main Pitch 
-        var pitch;
+        var canvas;
 		
 		//Kontext des Spielfeldes
         var ctx;
@@ -72,7 +72,7 @@
 				refreshID = setInterval(draw, refresh);
                 
                 //Only works for Chrome
-                pitch.webkitRequestFullScreen();                
+                canvas.webkitRequestFullScreen();                
 			}, false);
 		}
 		
@@ -117,13 +117,7 @@
             //Timer starten für Spielzeit
 			startTime = new Date();
             
-			//Trägheit des Balles
-			ballInertiax = BALLINERTIA;
-			ballInertiay = BALLINERTIA;
-			//Trägheitsbehaftete Beschleunigung
-			//phoneTilt = accel * ballInertia;
-			phoneTiltx = 0;
-			phoneTilty = 0;
+			
 			//Aktuell ausgelesene Beschleunigung aus dem Beschleunigungssensor
 			accelx = 0.0;
 			accely = 0.0;
@@ -131,12 +125,7 @@
 			// aktuelle Beschleunigung * letzte < 0 bedeutet Richtungsänderung
 			lastAccx = 0;
 			lastAccy = 0;
-			//Position des Balls
-			x = XINIT;
-			y = YINIT;
-			//Hindernis mit dem der Ball im letzten Intervall kollidiert ist
-			lastBrickx = -1;
-			lastBricky = -1;			
+					
 			
 			running = true;
 			pocketed = false;
@@ -195,29 +184,9 @@
         function draw() {
             if (running) {
                 setScreen();
-				//Ball bewegt sich von der Wand weg, Ballträgheit zurücksetzen
-                if (lastAccx * accelx < 0){
-					ballInertiax = BALLINERTIA;
-					lastBricky = -1;
-				}
-                if (lastAccy * accely < 0) {
-					ballInertiay = BALLINERTIA;
-					lastBrickx = -1;
-				}
-                
-                lastAccx = accelx;
-                lastAccy = accely;
-                
-                phoneTiltx = accelx * ballInertiax;
-                phoneTilty = -accely * ballInertiay;
+				
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
-                drawBricks();
-                drawHoles();
-                collisionDetection();
-                drawStartStop();
-                drawStopWatch(setStopWatch());
-                drawBall();
-                handleHoles();
+               
             } else {
 				if (!pocketed){
 					//Bildschirmwiederholung stoppen
