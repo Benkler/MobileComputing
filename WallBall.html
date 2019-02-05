@@ -76,7 +76,7 @@
 		function showInfoScreen(txt){
             var showDiv = document.createElement('div');
             showDiv.id = "showDiv";
-            showDiv.style.heihght = 400;
+            showDiv.style.height = 400;
             showDiv.style.textDecoration = "underline";
             showDiv.style.textAlign = "center";
             showDiv.style.paddingTop = "100px";
@@ -160,6 +160,7 @@
             ballSpeedX = 0;
             ballSpeedY  = -ballSpeedMax;
         
+        
 			accelx = 0.0;
 		
 			lastAccx = 0;
@@ -186,24 +187,35 @@
                var col =  counter % amountOfBricksPerRow;
                var brickX = col * (brickWidth)+ col*2 + 1 ; 
                var brickY = row* brickHeight + row +1;
-               bricks[counter] = { x: brickX , y: brickY, width: brickWidth};
+               bricks[counter] = { x: brickX , y: brickY, width: brickWidth, destroyed: false};
         
             }
         
         }
 		
-        //Prüft ob ein Wert innerhalb des Intervalls [smallv,bigv] liegt
-        //Gibt value, smallv oder bigv zurück
+        /*
+        Checks if value is within a range; Return value or range edges
+        */
         function valueBetween(value, smallv, bigv) {
             return value < smallv ? smallv : value > bigv ? bigv : value;
         }
         
+        /*
+        - Checks if value is within range
+        - Exclusive Edges   (smallv, bigv)!!!
+        */
          function valueBetweenBool(value, smallv, bigv) {
             return smallv < value && value < bigv;
         }
         
         function drawBricks (){
+       
             for(var counter = 0; counter < amountOfBricks; counter++ ){
+                
+                //Do not display destroyed Bricks
+                if(bricks[counter].destroyed){
+                 continue;
+                }
                 ctx.beginPath();
                 ctx.rect(bricks[counter].x, bricks[counter].y, bricks[counter].width, brickHeight);
                 ctx.fillStyle = "#61210B";
@@ -249,6 +261,33 @@
         
         function collisionDetection() {
             
+            //Check collision with bricks
+            for(var i=0; i< amountOfBricks;i++){
+                
+                if(bricks[i].destroyed){ //Do not consider destroyed bricks
+                  continue;
+                }
+
+               //Calculate brick collision zone --> Brick size + Ball radius
+               var curBrickXStart = bricks[i].x - BALLRADIUS;
+               var curBrickXEnd = bricks[i].x + bricks[i].width + BALLRADIUS;
+               var curBrickYStart = bricks[i].y - BALLRADIUS;
+               var curBrickYEnd = bricks[i].y + brickHeight + BALLRADIUS;
+               
+               
+               //collision detected
+               if(valueBetweenBool(ballX, curBrickXStart, curBrickXEnd) && valueBetweenBool(ballY, curBrickYStart, curBrickYEnd)){
+                  bricks[i].destroyed = true;
+                  handleBrickContact(bricks[i]);
+                  return;
+               }
+               
+              
+            
+            }
+            
+            // bricks[counter] = { x: brickX , y: brickY, width: brickWidth, destroyed: false};
+            
             //Check Contact between ball and Rectangle
             if(valueBetweenBool(ballX, (rectX - BALLRADIUS), (rectX + rectWidth + BALLRADIUS))){ //Check for x coordinate
             
@@ -256,7 +295,6 @@
                   handleRectContact();
                   
                }
-            
             }
         
             
@@ -283,6 +321,38 @@
             }
         }
         
+        /*
+        - Handle Contact with single Brick
+        - Change Ball direction depending on side the ball hits the Brick
+        - Handle Sides AND Corner Collisions
+        
+        */
+        function handleBrickContact(brick){
+        
+              var brickXStart = brick.x;
+              var brickXEnd = brick.x + brick.width;
+              var brickYStart = brick.y;
+              var brickYEnd = brick.y + brickHeight;
+               
+            //Check Top or Bottom Contact
+            if(valueBetweenBool(ballX, brickXStart, brickXEnd)){
+                ballSpeedY = -ballSpeedY
+                return;
+            } 
+            
+            //Check Left or Right Contact
+            if(valueBetweenBool(ballY, brickYStart, brickYEnd)){
+                ballSpeedX = -ballSpeedX
+                return;
+            
+            }
+            
+             ballSpeedX = -ballSpeedX
+             ballSpeedY = -ballSpeedY
+            
+            
+        }
+        
         
         /*
         - Handle Contact with rectangle. 
@@ -291,11 +361,19 @@
         
         */
         function handleRectContact(){
-        
+            
             var middleOfRectangleX = rectX + (rectWidth / 2);
             var differenceBallToMiddle = middleOfRectangleX - ballX;
             
-            var newSpeedX = -differenceBallToMiddle * 0.1;
+            var newSpeedX = 0;
+            
+            if(Math.abs( differenceBallToMiddle) < rectWidth * 0.1){
+              newSpeedX = 0;
+            }else{
+               newSpeedX = -differenceBallToMiddle * 0.1;
+            }
+            
+            
             
             ballSpeedX = calculateMaxSpeed(newSpeedX);
             ballSpeedY = -ballSpeedY;
@@ -306,11 +384,11 @@
         
         function calculateMaxSpeed(speed){
         
-        if(speed < - ballSpeedMax) return -ballSpeedMax;
+            if(speed < - ballSpeedMax) return -ballSpeedMax;
         
-        if (speed > ballSpeedMax) return ballSpeedMax;
+            if (speed > ballSpeedMax) return ballSpeedMax;
         
-        return speed;
+            return speed;
         
         }
         
