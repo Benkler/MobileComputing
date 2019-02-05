@@ -37,13 +37,22 @@
 		//Main Pitch 
         var canvas;
 		
-		//Kontext des Spielfeldes
+		//Game Context
         var ctx;
-		//Bildschirmverhältnis
+        
+		//Screen Proportions
         var ratio;
 
+        //Moving Rectangle
+        var maxX = 800; //To be set 
+        var minX = 1; // 1 px away from left wall
+        const rectHeight = 8;
+        const rectWidth = 26;
+        var rectX = 0;
+        var rectY = 0;
         
-        var accely = 0.0;
+        
+        var accelx = 0.0;
         
         //Spiel läuft?
         var running = false;
@@ -72,7 +81,7 @@
 				refreshID = setInterval(draw, refresh);
                 
                 //Only works for Chrome
-                canvas.webkitRequestFullScreen();                
+               // canvas.webkitRequestFullScreen();                
 			}, false);
 		}
 		
@@ -87,23 +96,26 @@
 			ctx = canvas.getContext("2d");
 		}
 		
-        //Setzt die Größenverhältnisse innerhalb des Spielfeldes passend zum Bildschirmverhältnis
+        //Adapt screen according to screen proportion
+        // Fit Canvas on screen, taking either max high or max width
 		function setScreen(){
+            //get proportions of canvas
             var width = canvas.width;
             var height = canvas.height;        
-            //canvas.webkitRequestFullScreen();                
-			ratio = width / height;
-            //Höhe und Breite passend zum Seitenverhältnis
+                            
+			ratio = width / height; // 800/400=2
             var heightval;
             var widthval;
-			//innerWidth/innerHeight < 4:3
-			if ((innerWidth / innerHeight) < ratio) {
-				//Scrollbalken verhindern => -16
+			
+            //i.e. Portrait mode, 
+			if ((window.innerWidth / window.innerHeight) < ratio) { 
+				//Prevent Scrollbar => -16
 				widthval = window.innerWidth - 16;
 				heightval = (widthval / ratio) - 16;
                 canvas.style.height = heightval + "px";
                 canvas.style.width = widthval + "px";
-            //innerWidth/innerHeight >= 4:3
+                
+            //i.e Landscape Mode
 			} else {
 				heightval = window.innerHeight - 16;
 				widthval = (heightval * ratio) - 16;
@@ -117,18 +129,22 @@
             //Timer starten für Spielzeit
 			startTime = new Date();
             
-			
-			//Aktuell ausgelesene Beschleunigung aus dem Beschleunigungssensor
+            //start coordinate rectangle
+			rectY = canvas.height - (rectHeight + 2); //Y coordinate at bottom of field plus 2 Pixel distance
+            rectX = (canvas.width / 2) - (rectWidth / 2); //Start x coordinate in middle
+		    
+            //Max/Min value for the rectangle
+            maxX = canvas.width - (rectWidth + 1); 
+            minX = 1; 
+        
 			accelx = 0.0;
-			accely = 0.0;
-			//Beschleunigung im letzten Intervall
-			// aktuelle Beschleunigung * letzte < 0 bedeutet Richtungsänderung
+		
 			lastAccx = 0;
-			lastAccy = 0;
+		
 					
 			
 			running = true;
-			pocketed = false;
+			loose = false;
 			refresh = 10;
 		}
 		
@@ -168,15 +184,22 @@
             ctx.fill();
             ctx.closePath();
         }
-        //Hindernisse zeichnen
-        function drawBricks() {
-            for (var c = 0; c < brickCount; c++) {
-                ctx.beginPath();
-                ctx.rect(bricks[c].x, bricks[c].y, bricks[c].width, bricks[c].height);
-                ctx.fillStyle = "#61210B";
-                ctx.fill();
-                ctx.closePath();
-            }
+        
+        
+        function drawRectangle(){
+        
+        var newRectX = rectX + accelx *2;
+        
+        rectX = valueBetween(newRectX, minX, maxX);
+        
+        ctx.beginPath()
+        ctx.rect(rectX, rectY,rectWidth, rectHeight);
+        ctx.fillStyle = "#61210B";
+        ctx.fill();
+        ctx.closePath();
+        
+       
+        
         }
 
 		
@@ -184,11 +207,15 @@
         function draw() {
             if (running) {
                 setScreen();
-				
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-               
+                ctx.clearRect(0, 0, canvas.width, canvas.height); //clear Rectangle, delete all Stuff
+                
+                
+                
+                
+                
+                drawRectangle();
             } else {
-				if (!pocketed){
+				if (!loose){
 					//Bildschirmwiederholung stoppen
 					clearInterval(refreshID);
 					//Canvas löschen
@@ -204,20 +231,21 @@
         //This is executed when site is rendered
         if (window.DeviceOrientationEvent) {
             window.addEventListener("devicemotion", function (event) {
+           
                 switch (window.orientation) {
                 
                     case 0:<!-- Normal Portrait: We want only landscape specific calculation: Use case 90°-->
-                       accely = event.accelerationIncludingGravity.y;;
+                       accelx = event.accelerationIncludingGravity.y;;
                         break;
                     case 90:<!-- Normal  Landscape-->
-                        accely = event.accelerationIncludingGravity.y;
+                        accelx = event.accelerationIncludingGravity.y;
                         break;
                     case -90:<!--Inverted Landscape -->
-                        accely = event.accelerationIncludingGravity.y * (-1);
+                        accelx = event.accelerationIncludingGravity.y * (-1);
                         break;
                   
                     case 180:<!-- Inverse Portrait: We want only landscape specific calculation: Use case -90°-->
-                        accely = event.accelerationIncludingGravity.y * (-1);
+                        accelx = event.accelerationIncludingGravity.y * (-1);
                         break;
                 }
             }, true);
