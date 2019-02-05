@@ -46,12 +46,21 @@
         //Moving Rectangle
         var maxX = 800; //To be set 
         var minX = 1; // 1 px away from left wall
-        const rectHeight = 8;
-        const rectWidth = 26;
+        const rectHeight = 10;
+        const rectWidth = 50;
         var rectX = 0;
         var rectY = 0;
         
+        //Ball
+        const BALLRADIUS = 12;
+        var ballX = 0;
+        var ballY = 0;
         
+        var ballSpeedX = 0;
+        var ballSpeedY = -9;
+        
+        
+        //Var to save current acceleration in x direction
         var accelx = 0.0;
         
         //Spiel läuft?
@@ -71,7 +80,7 @@
 			var btnText = document.createTextNode(txt);
 			showDiv.appendChild(btnText);
 			showDiv.addEventListener("click", function() {	
-				showDiv.parentNode.removeChild(showDiv);
+			showDiv.parentNode.removeChild(showDiv);
                 
            
 				initPitch();
@@ -136,6 +145,12 @@
             //Max/Min value for the rectangle
             maxX = canvas.width - (rectWidth + 1); 
             minX = 1; 
+            
+            //start ball in middle
+            ballX = canvas.width / 2;
+            ballY = canvas.height / 2;
+            ballSpeedX = 0;
+            ballSpeedY  = -3;
         
 			accelx = 0.0;
 		
@@ -154,32 +169,22 @@
             return value < smallv ? smallv : value > bigv ? bigv : value;
         }
         
+         function valueBetweenBool(value, smallv, bigv) {
+            return smallv < value && value < bigv;
+        }
+        
         
        
         
        
         //Zeichnet die aktuelle Position des Balles
         function drawBall() {
-            //Neues Tempo = (Altes + Neigung) * Reibung
-            ballSpeedx = (ballSpeedx + phoneTiltx) * BALLFRICTION;
-            ballSpeedy = (ballSpeedy + phoneTilty) * BALLFRICTION;
-            //Tunneln verhindern
-            if (ballSpeedx > MAXACCEL)
-                ballSpeedx = MAXACCEL;
-            if (ballSpeedx < -MAXACCEL)
-                ballSpeedx = -MAXACCEL;
-            if (ballSpeedy > MAXACCEL)
-                ballSpeedy = MAXACCEL;
-            if (ballSpeedy < -MAXACCEL)
-                ballSpeedy = -MAXACCEL;
-            //Wenn Kugel sehr langsam ist soll sie still liegen
-            if (Math.abs(ballSpeedx) > 0.01)
-                x = x + ballSpeedx;
-            if (Math.abs(ballSpeedy) > 0.01)
-                y = y + ballSpeedy;
+         
+            ballX = ballX + ballSpeedX;
+            ballY = ballY + ballSpeedY;
             //Ball zeichnen    
             ctx.beginPath();
-            ctx.arc(x, y, BALLRADIUS, 0, Math.PI * 2);
+            ctx.arc(ballX, ballY, BALLRADIUS, 0, Math.PI * 2);
             ctx.fillStyle = "#A4A4A4";
             ctx.fill();
             ctx.closePath();
@@ -201,6 +206,75 @@
        
         
         }
+        
+        
+        function collisionDetection() {
+            
+            //Check Contact between ball and Rectangle
+            if(valueBetweenBool(ballX, (rectX - BALLRADIUS), (rectX + rectWidth + BALLRADIUS))){ //Check for x coordinate
+            
+               if((ballY + BALLRADIUS) > rectY ){ //Check for y Coordinate
+                  handleRectContact();
+                  
+               }
+            
+            }
+        
+            
+            //Check Wall Contact Right Wall
+            if (ballX + ballSpeedX > canvas.width - BALLRADIUS) {
+                handleWallContact("right");
+                x = canvas.width - BALLRADIUS;
+            }
+            
+            //Check Wall COntact Left Wall
+            if (ballX + ballSpeedX < BALLRADIUS) {
+                handleWallContact(left);
+                x = BALLRADIUS;
+            }
+            
+            //Check Wall contact Top
+            if (ballY + ballSpeedY < BALLRADIUS) { //Top Wall
+                handleTopContact();
+                ballY = BALLRADIUS;
+            }
+            if (ballY + ballSpeedY > canvas.height - BALLRADIUS) { // Loose Game!
+                loose = true; 
+                running = false;
+            }
+        }
+        
+        
+        function handleRectContact(){
+        
+            ballSpeedX = -ballSpeedX;
+            ballSpeedY = -ballSpeedY;
+        }
+        function handleTopContact(){
+        
+            ballSpeedX = -ballSpeedX;
+            ballSpeedY = -ballSpeedY;
+        
+        }
+        
+        function handleWallContact(wallSide){
+        
+            switch(wallSide) {
+        
+                case "left":
+                //Do sth
+                break;
+         
+                case "right":
+                //Do sth
+                break;
+         
+                default:
+                alert("no such wall!");
+        
+            }   
+        
+        }
 
 		
         //Aktuellen Spielzustand zeichnen
@@ -209,18 +283,21 @@
                 setScreen();
                 ctx.clearRect(0, 0, canvas.width, canvas.height); //clear Rectangle, delete all Stuff
                 
-                
-                
-                
-                
+                collisionDetection();
                 drawRectangle();
+                drawBall();
+                
+                
             } else {
-				if (!loose){
-					//Bildschirmwiederholung stoppen
+				if (loose){
+                     
+					//Stop Screen Refresh
 					clearInterval(refreshID);
-					//Canvas löschen
+                    
+					//Remove Canvas!
 					canvas.parentNode.removeChild(canvas);					
-					showInfoScreen("Gewonnen! Zeit: " + setStopWatch() + " zum Wiederholen klicken.");
+					//showInfoScreen("Verloren! Zeit: " + setStopWatch() + " zum Wiederholen klicken.");
+                    showInfoScreen("Verloren!");
 				} else {
 					startTime = new Date();
 					init();
@@ -232,6 +309,7 @@
         if (window.DeviceOrientationEvent) {
             window.addEventListener("devicemotion", function (event) {
            
+            
                 switch (window.orientation) {
                 
                     case 0:<!-- Normal Portrait: We want only landscape specific calculation: Use case 90°-->
