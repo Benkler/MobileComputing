@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'time_settings.dart';
+import 'blue.dart';
 
 class navigator extends StatefulWidget {
   @override
@@ -7,7 +8,7 @@ class navigator extends StatefulWidget {
 }
 
 class _navigator_state extends State<navigator> {
-
+  final GlobalKey<ScaffoldState> scaffoldKey = new GlobalKey<ScaffoldState>();
 
   String test = "bla";
 
@@ -18,6 +19,7 @@ class _navigator_state extends State<navigator> {
       home: DefaultTabController(
         length: 3,
         child: Scaffold(
+          key: scaffoldKey,
           appBar: AppBar(
             bottom: TabBar(
               tabs: [
@@ -33,7 +35,7 @@ class _navigator_state extends State<navigator> {
             children: [
               Icon(Icons.directions_car),
               Time_Settings(),
-              Icon(Icons.settings_bluetooth),
+              Blue(scaffoldKey: scaffoldKey,),
             ],
           ),
         ),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:numberpicker/numberpicker.dart';
 
 class Time_Settings extends StatefulWidget {
+
   @override
   State<StatefulWidget> createState() => new _Time_Settings_State();
 }
@@ -83,7 +84,7 @@ class My_Time_Picker extends StatelessWidget {
     // TODO: implement build
     return new Container(
       //Time Picker
-      margin: EdgeInsets.fromLTRB(100, 10, 100, 20),
+      margin: EdgeInsets.fromLTRB(50, 10, 50, 20),
       decoration:
           new BoxDecoration(border: new Border.all(color: Colors.black26)),
       child: new Row(
