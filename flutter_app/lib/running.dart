@@ -103,7 +103,7 @@ class Running_State extends State<Running> {
           new Text("device: " + device.toString()),
           new Text("usedCharacteristic: " + usedCharacteristic.toString()),
           new Text("minutes: " + minutes.toString()),
-          new Text("seconds: " + seconds.toString()), 
+          new Text("seconds: " + seconds.toString()),
           new Text("Latitude: " +  currentLocation['latitude'].toString())
         ],
       ),
