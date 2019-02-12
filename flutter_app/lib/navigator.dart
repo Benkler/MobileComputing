@@ -24,6 +24,7 @@ class _navigator_state extends State<navigator> {
 
   @override
   Widget build(BuildContext context) {
+    print("Build Executed: " + _connectionEstablished.toString());
     return MaterialApp(
       home: DefaultTabController(
         length: 3,
@@ -74,7 +75,8 @@ class _navigator_state extends State<navigator> {
 
   void setBluetoothParameters(
       BluetoothCharacteristic usedCharacteristic, BluetoothDevice device, bool connectionEstablished) {
-
+    print("Set BT param --------------------------------");
+    print("Bool: " + connectionEstablished.toString() );
     setState(() {
       this._device = device;
       this._usedCharacteristic = usedCharacteristic;

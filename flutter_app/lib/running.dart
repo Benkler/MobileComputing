@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+
 import 'package:flutter_blue/flutter_blue.dart';
 import 'dart:async';
 import "alert_dialog.dart";
 
-class Running extends StatelessWidget{
+
+class Running extends StatefulWidget{
 
   //Values for Bluetooth
   BluetoothCharacteristic usedCharacteristic = null;
@@ -14,11 +16,31 @@ class Running extends StatelessWidget{
   int minutes = 6; //Initial values
   int seconds = 30;
 
+  @override
+  State<StatefulWidget> createState() =>Running_State(connectionEstablished: connectionEstablished,device: device,usedCharacteristic: usedCharacteristic,seconds: seconds, minutes: minutes);
+
   Running({@required this.connectionEstablished,@required this.device,@required this.usedCharacteristic, @required this.minutes, @required this.seconds});
+
+}
+
+class Running_State extends State<Running>{
+
+  //Values for Bluetooth
+  BluetoothCharacteristic usedCharacteristic;
+  BluetoothDevice device;
+  bool connectionEstablished;
+
+  //Values for Time_Settings
+  int minutes; //Initial values
+  int seconds;
+
+
+
+  Running_State({@required this.connectionEstablished,@required this.device,@required this.usedCharacteristic, @required this.minutes, @required this.seconds});
 
   @override
   Widget build(BuildContext context) {
-    // TODO: implement build
+    print("Running state build executed: " + connectionEstablished.toString());
     return new Container(
 
       child: new Column(
