@@ -56,6 +56,8 @@ class Running_State extends State<Running> {
   Location location = new Location();
   String error;
 
+  double discrepancy = null;
+
   @override
   void initState() {
     super.initState();
@@ -66,6 +68,7 @@ class Running_State extends State<Running> {
         location.onLocationChanged().listen((Map<String, double> result) {
       setState(() {
         currentLocation = result;
+        discrepancy = calculateCurrentDiscrepancy();
       });
     });
   }
@@ -86,10 +89,18 @@ class Running_State extends State<Running> {
 
       setState(() {
         currentLocation = myLocation;
+        discrepancy = calculateCurrentDiscrepancy();
       });
 
 
     }
+  }
+
+  double calculateCurrentDiscrepancy(){
+     double curSpeedInMeterPerSecond = currentLocation['speed'];
+     double desiredSpeedInMeterPerSecond = 1000 / (minutes*60 + seconds);
+     return curSpeedInMeterPerSecond - desiredSpeedInMeterPerSecond;
+
   }
 
   @override
@@ -104,7 +115,11 @@ class Running_State extends State<Running> {
           new Text("usedCharacteristic: " + usedCharacteristic.toString()),
           new Text("minutes: " + minutes.toString()),
           new Text("seconds: " + seconds.toString()),
-          new Text("Latitude: " +  currentLocation['latitude'].toString())
+          new Text("Latitude: " +  currentLocation['latitude'].toString()),
+          new Text("accuracy: " +  currentLocation['accuracy'].toString()),
+          new Text("altitude: " +  currentLocation['altitude'].toString()),
+          new Text("speed: " +  currentLocation['speed'].toString()),
+          new Text("Discrepancy: " +  discrepancy.toString()),
         ],
       ),
     );
