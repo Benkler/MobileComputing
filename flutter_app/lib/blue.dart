@@ -17,33 +17,73 @@ class Blue_State extends State<Blue> {
   Blue_State({this.scaffoldKey});
 
   GlobalKey<ScaffoldState> scaffoldKey;
-  bool BLEconnected = false;
-  FlutterBlue flutterBlue = FlutterBlue.instance;
-  BluetoothDevice connectedDevice = null;
-  BluetoothCharacteristic usedCharacteristic = null;
-  StreamSubscription scanSubscription;
-  StreamSubscription connection;
-  bool deviceIsConnected = false;
+
+  StreamSubscription _scanSubscription;
+
+  //BT Instance
+  FlutterBlue flutterBlue = null;
+
+  //Device
   BluetoothDevice device;
+  BluetoothDeviceState deviceState = BluetoothDeviceState.disconnected;
+  StreamSubscription deviceStateSubscription; //Pipe for device changes
+  BluetoothCharacteristic usedCharacteristic = null;
+  bool BLEdeviceConnected = false;
+  bool BLEdevicePaired = false;
 
+  /// State of BT
+  StreamSubscription bluetoothconnection; //Pipe for BT connection
+  StreamSubscription
+      _stateSubscription; //Pipe for BT state changes (change between On and OFF)
+  BluetoothState state = BluetoothState.unknown; // ON or OFF
 
+  //Layout
   Text notConnected = new Text("Connect to Wearable");
-  Text connected = new Text("Connected");
+  Text connected = new Text("    Connected    ");
+  Text paired = new Text("   Waiting for Device   ");
+  Text disconnect = new Text("   Disconnect   ");
   Color red = Colors.red;
-  Color green = Colors.lightGreen;
+  Color green = Colors.green;
+  Color orange = Colors.orange;
 
+  /*
+  Create new Flutter Instance to flush old connected devices
+  Create listeners for BT ON/OFF changes
+   */
+  void resetFlutterInstance() {
+    flutterBlue = FlutterBlue.instance;
+    flutterBlue.state.then((s) {
+      setState(() {
+        state = s;
+      });
+    });
+
+    // Subscribe to state changes
+    _stateSubscription = flutterBlue.onStateChanged().listen((s) {
+      if (s == BluetoothState.off) {
+        //Aler if BT is turned off
+        Alert_Dialog.show(context, new Text("Bluetooth was turned off"),
+            new Text("Please turn it on!"));
+      }
+      setState(() {
+        state = s;
+      });
+    });
+  }
 
   @override
   void dispose() {
-    scanSubscription?.cancel();
-    scanSubscription = null;
-    scanSubscription?.cancel();
-    scanSubscription = null;
-    connection?.cancel();
-    connection = null;
+    _stateSubscription?.cancel();
+    _stateSubscription = null;
+    _scanSubscription?.cancel();
+    _scanSubscription = null;
+    bluetoothconnection?.cancel();
+    bluetoothconnection = null;
+    flutterBlue = FlutterBlue.instance;
+    BLEdevicePaired = false;
+    BLEdeviceConnected = false;
     super.dispose();
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -52,20 +92,25 @@ class Blue_State extends State<Blue> {
       title: new Text("Connection to Wearable"),
       children: <Widget>[
         new RaisedButton(
-          onPressed: !this.BLEconnected ? connect : () {}, //Search for device if not connected
-          child: this.BLEconnected ? connected : notConnected,
-          color: this.BLEconnected ? green  : red,
+          onPressed: !this.BLEdeviceConnected
+              ? connectAndDisplaySnackBar
+              : () {}, //Search for device if not connected
+          child: this.BLEdeviceConnected
+              ? connected
+              : (BLEdevicePaired ? paired : notConnected),
+          color: this.BLEdeviceConnected
+              ? green
+              : (BLEdevicePaired ? orange : red),
         ),
         new Container(
-            child: this.BLEconnected
+            child: this.BLEdeviceConnected | BLEdevicePaired
                 ? new RaisedButton(
                     onPressed: _cancelConnectiontoBLE,
-                    child: Text("Disconnect"),
-              
+                    child: disconnect,
                   )
                 : Container()),
         new Container(
-            child: this.BLEconnected
+            child: this.BLEdeviceConnected
                 ? new RaisedButton(
                     onPressed: _testWearable,
                     color: Colors.white70,
@@ -78,48 +123,48 @@ class Blue_State extends State<Blue> {
 
   void _cancelConnectiontoBLE() {
     setState(() {
-      this.connection.cancel();
-      this.connection = null;
-      this.BLEconnected = false;
+      _stateSubscription?.cancel();
+      _stateSubscription = null;
+      deviceStateSubscription?.cancel();
+      deviceStateSubscription = null;
+      bluetoothconnection?.cancel();
+      bluetoothconnection = null;
+      _scanSubscription?.cancel();
+      _scanSubscription = null;
+      BLEdevicePaired = false;
+      BLEdeviceConnected = false;
       this.device = null;
-      scanSubscription = null;
-      BLEconnected = false;
     });
   }
 
-  void connect(){
+  /*
+  Create connection to device.
+  Display Snack Bar while connection is running
+   */
+  void connectAndDisplaySnackBar() {
+    scaffoldKey.currentState.showSnackBar(new SnackBar(
+      duration: new Duration(seconds: 3),
+      content: new Row(
+        children: <Widget>[
+          new CircularProgressIndicator(),
+          new Text("  Connecting...")
+        ],
+      ),
+    ));
 
-    scaffoldKey.currentState.showSnackBar(
-        new SnackBar(duration: new Duration(seconds: 4), content:
-        new Row(
-          children: <Widget>[
-            new CircularProgressIndicator(),
-            new Text("  Connecting...")
-          ],
-        ),
-        ));
-    searchForDevice()
-        .whenComplete((){}
-    );
-
+    searchForDevice();
   }
-
-
 
   /**
    * Search for Wearable --> Start Scan
    */
   Future searchForDevice() async {
-    //async immediately returns a Future. It is required to use await
-    //check for active BT
+    resetFlutterInstance();
     bool bluetoothOn = await flutterBlue.isOn.catchError((e) {
-      //await: Asynchronous code, wait for future to complete
       return null;
     });
-
     if (bluetoothOn == null) {
       //No BT available
-
       Alert_Dialog.show(
           context,
           new Text("No Bluetooth available!"),
@@ -129,35 +174,30 @@ class Blue_State extends State<Blue> {
     }
 
     if (!bluetoothOn) {
-
       //BT off
       Alert_Dialog.show(context, new Text("Bluetooth is turned off"),
           new Text("Please turn the Bluetooth on"));
       return;
     }
-    scanSubscription = flutterBlue //Scan for Devices
+    _scanSubscription = flutterBlue //Scan for Devices
         .scan(timeout: new Duration(seconds: 3))
         .listen((scanResult) {
       //Executed whenever new scan result found
 
-      print("Device: " + scanResult.device.name);
       if (scanResult.device.name == "TECO Wearable 5 ") {
-        print("----------------------Device Found---------------------------");
         this.device = scanResult.device;
-        cancelScan();
+        cancelScan(); //cacle scan if device found
         return;
-
       }
-    }, onDone: cancelScan);
+    }, onDone: cancelScan); //Cancle scanafter timeout
   }
 
   /*
   End Scan. Connect, if device found!
    */
   void cancelScan() {
-    print("----------cancel");
-    scanSubscription?.cancel(); //? operator: prevent null pointer access
-    scanSubscription = null;
+    _scanSubscription?.cancel(); //? operator: prevent null pointer access
+    _scanSubscription = null;
 
     if (device == null) {
       Alert_Dialog.show(
@@ -171,33 +211,77 @@ class Blue_State extends State<Blue> {
   }
 
   /*
-  Connect to Device
+  Connect to Device and discover services.
+  Subscribe to connection Change
    */
-  void _connect() async {
-//    without timeout connection has to be terminated voluntarily
-    if (!BLEconnected) {
-      this.connection = flutterBlue.connect(this.device).listen((s) async {
-        if (s == BluetoothDeviceState.connected) {
-          List<BluetoothService> services =
-              await this.device.discoverServices();
-          BluetoothService service =
-              services.toList().removeAt(2); //We need third characteristic only
-          usedCharacteristic = service.characteristics.toList().first;
+  _connect() async {
+    // Connect to device
+    this.bluetoothconnection =
+        flutterBlue.connect(device, timeout: const Duration(seconds: 4)).listen(
+              null, //If not successfull-> cancel
+              onDone: _cancelConnectiontoBLE,
+            );
 
-          _setStateBLEConnected();
-        }
+    // Update the connection state immediately
+    device.state.then((s) {
+      setState(() {
+        deviceState = s;
       });
-    } else {
-      Alert_Dialog.show(context, new Text("Device already Connected"),
-          new Text("Check for connection."));
-      return;
-    }
+    });
+
+    // Subscribe to connection changes
+    deviceStateSubscription = device.onStateChanged().listen((s) {
+      setState(() {
+        print(s);
+        deviceState = s;
+      });
+      if (s == BluetoothDeviceState.connected) {
+        _discoverServices();
+      } else if (s == BluetoothDeviceState.disconnected) {
+        print("------------------------------------DISCONNECTED");
+        _handleDisconnectedDevice();
+      }
+    });
   }
 
+  /*
+  Handle if device is disconnected.
+  Disregard disconnection due to bluetooth changes
+   */
+  void _handleDisconnectedDevice() async {
+    //Check if disconnection is due to BT OFF
+    bool bluetoothOn = await flutterBlue.isOn;
+    if (!bluetoothOn) {
+      return;
+    }
+
+    Alert_Dialog.show(context, new Text("Connection Lost"),
+        new Text("Please check if device is turned on!"));
+    setState(() {
+      BLEdeviceConnected = false;
+      BLEdevicePaired = true; //Already paired, but corrently not connected
+    });
+  }
+
+  /*
+  Discover services, filter as we only need the third service
+   */
+  void _discoverServices() {
+    device.discoverServices().then((services) {
+      setState(() {
+        BluetoothService service =
+            services.toList().removeAt(2); //We need third characteristic only
+        usedCharacteristic = service.characteristics.toList().first;
+        _setStateBLEConnected();
+      });
+    });
+  }
+
+  //Connected (implies paired, but we need differentiation between beeing connected and only being paired)
   void _setStateBLEConnected() {
     setState(() {
-      print("-----------------------Set state");
-      BLEconnected = true;
+      BLEdeviceConnected = true;
+      BLEdevicePaired = false;
     });
   }
 
@@ -205,35 +289,10 @@ class Blue_State extends State<Blue> {
   Run Each Motor for about 1 sec
    */
   void _testWearable() async {
-
     this
         .device
         .writeCharacteristic(usedCharacteristic, [0xFF, 0x00, 0x00, 0x00]);
     await Future.delayed(new Duration(seconds: 1)); //kind of thread.sleep()
-    this
-        .device
-        .writeCharacteristic(usedCharacteristic, [0x00, 0x00, 0x00, 0x00]);
-
-    this
-        .device
-        .writeCharacteristic(usedCharacteristic, [0x00, 0xFF, 0x00, 0x00]);
-    await Future.delayed(new Duration(seconds: 1));
-    this
-        .device
-        .writeCharacteristic(usedCharacteristic, [0x00, 0x00, 0x00, 0x00]);
-
-    this
-        .device
-        .writeCharacteristic(usedCharacteristic, [0x00, 0x00, 0xFF, 0x00]);
-    await Future.delayed(new Duration(seconds: 1));
-    this
-        .device
-        .writeCharacteristic(usedCharacteristic, [0x00, 0x00, 0x00, 0x00]);
-
-    this
-        .device
-        .writeCharacteristic(usedCharacteristic, [0x00, 0x00, 0x00, 0xFF]);
-    await Future.delayed(new Duration(seconds: 1));
     this
         .device
         .writeCharacteristic(usedCharacteristic, [0x00, 0x00, 0x00, 0x00]);
