@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'time_settings.dart';
 import 'blue.dart';
+import 'running.dart';
+import 'package:flutter_blue/flutter_blue.dart';
+import 'dart:async';
 
 class navigator extends StatefulWidget {
   @override
@@ -10,8 +13,14 @@ class navigator extends StatefulWidget {
 class _navigator_state extends State<navigator> {
   final GlobalKey<ScaffoldState> scaffoldKey = new GlobalKey<ScaffoldState>();
 
-  String test = "bla";
+  //Values for Time_Settings
+  int _minutes = 6; //Initial values
+  int _seconds = 30;
 
+  //Values for Bluetooth
+  BluetoothCharacteristic _usedCharacteristic = null;
+  BluetoothDevice _device;
+  bool _connectionEstablished = false;
 
   @override
   Widget build(BuildContext context) {
@@ -33,9 +42,15 @@ class _navigator_state extends State<navigator> {
           ),
           body: TabBarView(
             children: [
-              Icon(Icons.directions_car),
-              Time_Settings(),
-              Blue(scaffoldKey: scaffoldKey,),
+              Running(connectionEstablished: _connectionEstablished,device: _device,usedCharacteristic: _usedCharacteristic,seconds: _seconds, minutes: _minutes,),
+              Time_Settings(
+                  minutes: _minutes,
+                  seconds: _seconds,
+                  setMinutes: _setMinutes,
+                  setSeconds: _setSeconds),
+              Blue(
+                scaffoldKey: scaffoldKey, setBluetoothParametersInNavigator: setBluetoothParameters ,
+              ),
             ],
           ),
         ),
@@ -43,6 +58,27 @@ class _navigator_state extends State<navigator> {
     );
   }
 
+  //Callback function to set minutes
+  void _setMinutes(int minutes) {
+    setState(() {
+      _minutes = minutes;
+    });
+  }
 
+  //Callbackfunction to set seconds
+  void _setSeconds(int seconds) {
+    setState(() {
+      _seconds = seconds;
+    });
+  }
 
+  void setBluetoothParameters(
+      BluetoothCharacteristic usedCharacteristic, BluetoothDevice device, bool connectionEstablished) {
+
+    setState(() {
+      this._device = device;
+      this._usedCharacteristic = usedCharacteristic;
+      this._connectionEstablished = connectionEstablished;
+    });
+  }
 }

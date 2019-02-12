@@ -6,17 +6,28 @@ import "navigator.dart";
 
 class Blue extends StatefulWidget {
   GlobalKey<ScaffoldState> scaffoldKey;
+  final void Function(BluetoothCharacteristic usedCharacteristic, BluetoothDevice device, bool connectioEstablished) setBluetoothParametersInNavigator;
 
-  Blue({this.scaffoldKey});
+  Blue({this.scaffoldKey, this.setBluetoothParametersInNavigator});
 
   @override
-  State<StatefulWidget> createState() => Blue_State(scaffoldKey: scaffoldKey);
+  State<StatefulWidget> createState() => Blue_State(scaffoldKey: scaffoldKey, setBluetoothParametersInNavigator: setBluetoothParametersInNavigator);
 }
 
-class Blue_State extends State<Blue> {
-  Blue_State({this.scaffoldKey});
+class Blue_State extends State<Blue> with AutomaticKeepAliveClientMixin<Blue>  {
 
+  @override
+  // TODO: implement wantKeepAlive
+  bool get wantKeepAlive => true;
+
+  //Constructor
+  Blue_State({@required this.scaffoldKey, @required this.setBluetoothParametersInNavigator});
+
+  //Key to acces main scaffold -> Snackbar
   GlobalKey<ScaffoldState> scaffoldKey;
+
+  //Set BT device parameters in superclass
+  final void Function(BluetoothCharacteristic usedCharacteristic, BluetoothDevice device, bool connectioEstablished) setBluetoothParametersInNavigator;
 
   StreamSubscription _scanSubscription;
 
@@ -63,7 +74,7 @@ class Blue_State extends State<Blue> {
       if (s == BluetoothState.off) {
         //Aler if BT is turned off
         Alert_Dialog.show(context, new Text("Bluetooth was turned off"),
-            new Text("Please turn it on!"));
+            new Text("Please turn it on and connect to device!"));
         _cancelConnectiontoBLE();
       }
       setState(() {
@@ -74,7 +85,6 @@ class Blue_State extends State<Blue> {
 
   @override
   void dispose() {
-    print("----------------------------DISPOSE");
     _stateSubscription?.cancel();
     _stateSubscription = null;
     _scanSubscription?.cancel();
@@ -125,6 +135,7 @@ class Blue_State extends State<Blue> {
   }
 
   void _cancelConnectiontoBLE() {
+    setBluetoothParametersInNavigator(null,null,false );
     setState(() {
       _stateSubscription?.cancel();
       _stateSubscription = null;
@@ -263,6 +274,8 @@ class Blue_State extends State<Blue> {
     setState(() {
       BLEdeviceConnected = false;
       BLEdevicePaired = true; //Already paired, but corrently not connected
+      setBluetoothParametersInNavigator(usedCharacteristic,device,false );
+
     });
   }
 
@@ -286,7 +299,11 @@ class Blue_State extends State<Blue> {
       BLEdeviceConnected = true;
       BLEdevicePaired = false;
     });
+    setBluetoothParametersInNavigator(usedCharacteristic,device,true );
+
   }
+
+
 
   /*
   Run Each Motor for about 1 sec

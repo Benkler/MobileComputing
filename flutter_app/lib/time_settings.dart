@@ -1,30 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:numberpicker/numberpicker.dart';
 
-class Time_Settings extends StatefulWidget {
 
-  @override
-  State<StatefulWidget> createState() => new _Time_Settings_State();
-}
 
-class _Time_Settings_State extends State<Time_Settings> {
+class Time_Settings extends StatelessWidget {
   Text text;
-  int _minutes = 6;
-  int _seconds = 30;
+  int minutes;
+  int seconds;
 
-  //Callback function to set minutes
-  void _setMinutes(int minutes) {
-    setState(() {
-      _minutes = minutes;
-    });
-  }
+  final void Function(int) setMinutes;
+  final void Function(int) setSeconds;
 
-  //Callbackfunction to set seconds
-  void _setSeconds(int seconds) {
-    setState(() {
-      _seconds = seconds;
-    });
-  }
+
+  Time_Settings({@required this.minutes, @required this.seconds, @required this.setMinutes, @required this.setSeconds});
+
+
 
   @override
   Widget build(BuildContext context) {
@@ -40,16 +30,16 @@ class _Time_Settings_State extends State<Time_Settings> {
         //Time Picker
         new Container(
             child: new My_Time_Picker(
-                initialSeconds: _seconds,
-                initialMinutes: _minutes,
-                changeMinutes: _setMinutes,
-                changeSeconds: _setSeconds)),
+                initialSeconds: seconds,
+                initialMinutes: minutes,
+                changeMinutes: setMinutes,
+                changeSeconds: setSeconds)),
 
         //Show Time
         new Container(
           child: new Show_Time(
-            seconds: _seconds,
-            minutes: _minutes,
+            seconds: seconds,
+            minutes: minutes,
           ),
         ),
 
