@@ -64,6 +64,7 @@ class Blue_State extends State<Blue> {
         //Aler if BT is turned off
         Alert_Dialog.show(context, new Text("Bluetooth was turned off"),
             new Text("Please turn it on!"));
+        _cancelConnectiontoBLE();
       }
       setState(() {
         state = s;
@@ -73,6 +74,7 @@ class Blue_State extends State<Blue> {
 
   @override
   void dispose() {
+    print("----------------------------DISPOSE");
     _stateSubscription?.cancel();
     _stateSubscription = null;
     _scanSubscription?.cancel();
@@ -88,8 +90,9 @@ class Blue_State extends State<Blue> {
   @override
   Widget build(BuildContext context) {
     // TODO: implement build
-    return new ExpansionTile(
-      title: new Text("Connection to Wearable"),
+    return new Container(
+      margin: EdgeInsets.fromLTRB(0, 50, 0, 0),
+        child: Column(
       children: <Widget>[
         new RaisedButton(
           onPressed: !this.BLEdeviceConnected
@@ -118,7 +121,7 @@ class Blue_State extends State<Blue> {
                   )
                 : Container()),
       ],
-    );
+    ));
   }
 
   void _cancelConnectiontoBLE() {
@@ -238,7 +241,7 @@ class Blue_State extends State<Blue> {
       if (s == BluetoothDeviceState.connected) {
         _discoverServices();
       } else if (s == BluetoothDeviceState.disconnected) {
-        print("------------------------------------DISCONNECTED");
+
         _handleDisconnectedDevice();
       }
     });
@@ -292,6 +295,14 @@ class Blue_State extends State<Blue> {
     this
         .device
         .writeCharacteristic(usedCharacteristic, [0xFF, 0x00, 0x00, 0x00]);
+    await Future.delayed(new Duration(seconds: 1)); //kind of thread.sleep()
+    this
+        .device
+        .writeCharacteristic(usedCharacteristic, [0x00, 0x00, 0x00, 0x00]);
+
+    this
+        .device
+        .writeCharacteristic(usedCharacteristic, [0xFF, 0xFF, 0xFF, 0xFF]);
     await Future.delayed(new Duration(seconds: 1)); //kind of thread.sleep()
     this
         .device
