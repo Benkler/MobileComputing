@@ -13,17 +13,14 @@ class Running extends StatefulWidget {
   bool connectionEstablished = false;
 
   //Values for Time_Settings
-  int minutes = 6; //Initial values
-  int seconds = 30;
+  int minutes;
+  int seconds;
 
   @override
-  State<StatefulWidget> createState() => Running_State(
-      connectionEstablished: connectionEstablished,
-      device: device,
-      usedCharacteristic: usedCharacteristic,
-      seconds: seconds,
-      minutes: minutes);
-
+  State<StatefulWidget> createState() {
+    print("-------------------------------Create State");
+    return new Running_State();
+  }
   Running(
       {@required this.connectionEstablished,
       @required this.device,
@@ -32,53 +29,271 @@ class Running extends StatefulWidget {
       @required this.seconds});
 }
 
-class Running_State extends State<Running> {
-  Running_State(
-      {@required this.connectionEstablished,
-      @required this.device,
-      @required this.usedCharacteristic,
-      @required this.minutes,
-      @required this.seconds});
+class Running_State extends State<Running> with AutomaticKeepAliveClientMixin<Running> {
 
-  //Values for Bluetooth
-  BluetoothCharacteristic usedCharacteristic;
-  BluetoothDevice device;
-  bool connectionEstablished;
 
-  //Values for Time_Settings
-  int minutes; //Initial values
-  int seconds;
+
+
+
 
   //GPS
-  Map<String, double> currentLocation = new Map();
+  Map<String, double> _currentLocation = new Map();
+  Map<String, double> _startLocation = new Map();
   StreamSubscription<Map<String, double>> locationSubscription;
-
   Location location = new Location();
-  String error;
+  String error = "";
+  bool _permission = false;
 
-  double discrepancy = null;
+  //Current Speed and Tracking Data
+  double _discrepancyInMeterPerSecond = 0;
+  double _discrepancyInSecondsPerKm = 0;
+  String _currentSpeedAsString = "";
+  Color _discrepancyColor = Colors.black26;
+  bool _trackingStarted = false;
+  bool _trackingPaused = false;
+
+  //----------------------Build Widgets----------------------------
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    widget.minutes;
+    print("---------------------------------Build Executed2 With minutes: ${widget.minutes}");
+    return new Container(
+      child: new Stack(children: <Widget>[
+        new Positioned(
+          //Start Tracking
+          child: !_trackingStarted
+              ? new Align(
+                  child: startTrackingButton(),
+                )
+              : new Container(),
+        ),
+        new Positioned(
+            //Tracking Display
+
+            child: _trackingStarted
+                ? new Align(
+                    alignment: FractionalOffset.center,
+                    child: trackingDisplay(),
+                  )
+                : new Container()),
+        new Positioned(
+            //Show Bottom Bar if tracking is started
+            child: _trackingStarted
+                ? new Align(
+                    alignment: FractionalOffset.bottomCenter,
+                    child: bottomBar())
+                : new Container())
+      ]),
+    );
+  }
+
+  Widget trackingDisplay() {
+    return new FractionallySizedBox(
+        widthFactor:
+            (MediaQuery.of(context).orientation == Orientation.portrait)
+                ? 0.7
+                : 0.3,
+        heightFactor:
+            (MediaQuery.of(context).orientation == Orientation.portrait)
+                ? 0.5
+                : 0.4,
+        child: _trackingPaused
+            ? new Container( //Paused
+          alignment: FractionalOffset.center,
+                color: Colors.black26,
+                child: new Text("Paused!"),
+              )
+            : Container( //Running
+                color: _discrepancyColor,
+                child: new Column(
+                  //Running
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: <Widget>[
+                    new Text(
+                      "Current Speed:",
+                      style: TextStyle(fontSize: 20),
+                    ),
+                    new Text(
+                      _currentSpeedAsString,
+                      style: TextStyle(fontSize: 20),
+                    ),
+                    new Text(""), //Spacer
+                    new Text("Desired Speed:"),
+                    new Text("${widget.minutes}' ${widget.seconds}''"),
+                  ],
+                )));
+  }
+
+  Widget startTrackingButton() {
+    return _trackingStarted
+        ? new Container()
+        : new RaisedButton(
+            child: new Text("Start Tracking"), onPressed: _startTracking);
+  }
+
+  /*
+  Bottom Bar to pause, stop and restart Tracking
+   */
+  Widget bottomBar() {
+    if (!_trackingStarted) {
+      return new Container();
+    }
+    return new Container(
+      decoration: BoxDecoration(color: Colors.lightGreen),
+      child: new Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: <Widget>[
+          new IconButton(
+            onPressed: _stopTracking,
+            icon: Icon(Icons.stop),
+          ),
+          _trackingPaused
+              ? new IconButton(
+                  onPressed: _restartTracking,
+                  icon: Icon(Icons.play_circle_filled))
+              : new IconButton(
+                  onPressed: _pauseTracking,
+                  icon: Icon(Icons.pause_circle_filled),
+                ),
+        ],
+      ),
+    );
+  }
+
+  //--------------------Conversion Methods---------------------
+  /*
+  Calculate Speed Discrepancy in meter/sec
+   */
+  double _calculateCurrentDiscrepancyInMeterPerSecond() {
+    double curSpeedInMeterPerSecond = _currentLocation['speed'];
+    double desiredSpeedInMeterPerSecond = 1000 / (widget.minutes * 60 + widget.seconds);
+    return curSpeedInMeterPerSecond - desiredSpeedInMeterPerSecond;
+  }
+
+  /*
+  - Calculate Speed Discrepancy in Seconds Per km
+  -  <0 ==>  To Fast
+  -  >0  ==> To Slow
+   */
+  double _calculateCurrentDiscrepancyInSecondsPerKm() {
+    double curSpeedInSecondsPerKm = 1000 / _currentLocation['speed'];
+    int desiredSpeedInSecondsPerKm = (widget.minutes * 60 + widget.seconds);
+    return curSpeedInSecondsPerKm - desiredSpeedInSecondsPerKm;
+  }
+
+  /*
+  Calculate String in    min ' sec'' per km
+   */
+  String _calculateDisplaySpeed() {
+    double curSpeedInMeterPerSecond = _currentLocation['speed'];
+    if (curSpeedInMeterPerSecond == 0) {
+      return " 0'' 0'";
+    }
+    double secondsPerKilometer = 1000 / curSpeedInMeterPerSecond;
+
+    int minutes = (secondsPerKilometer / 60).floor();
+    int seconds = (secondsPerKilometer % 60).round();
+    return " ${minutes}' ${seconds}''";
+  }
+
+  //---------------------------Handle Tracking State------------------
+
+  Color _chooseDisplayColor() {
+    if (_discrepancyInSecondsPerKm < -10) {
+      //To Fast
+      return Colors.redAccent;
+    } else if (_discrepancyInSecondsPerKm > 10) {
+      return Colors.blue;
+    } else {
+      return Colors.lightGreen;
+    }
+  }
+
+  void _startTracking() {
+    if (!_checkConditionsForStarting()) {
+      return;
+    }
+    //initSnackBar();
+    setState(() {
+      _trackingStarted = true;
+    });
+  }
+
+  void _restartTracking() {
+    setState(() {
+      _trackingPaused = false;
+    });
+  }
+
+  void _stopTracking() {
+    setState(() {
+      _trackingStarted = false;
+      _trackingPaused = false;
+    });
+  }
+
+  void _pauseTracking() {
+    setState(() {
+      _trackingPaused = true;
+    });
+  }
+
+  bool _checkConditionsForStarting() {
+    return true;
+  }
+
+  //-------------------------------------Init stuff------------------------------
+
+
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  void dispose() {
+    locationSubscription?.cancel();
+    locationSubscription = null;
+    super.dispose();
+  }
 
   @override
   void initState() {
     super.initState();
-    currentLocation['latitude'] = 0.0;
-    currentLocation['longitude'] = 0.0;
+  print("---------------------------------Init Executed");
+    _currentLocation['latitude'] = 0.0;
+    _currentLocation['longitude'] = 0.0;
     initPlatformState();
+
+    //Add subscription to GPS changes
     locationSubscription =
         location.onLocationChanged().listen((Map<String, double> result) {
       setState(() {
-        currentLocation = result;
-        discrepancy = calculateCurrentDiscrepancy();
+        print("--------------Location Changed: " + result['speed'].toString());
+
+        _currentLocation = result; //set new location incl. speed
+        _discrepancyInMeterPerSecond =
+            _calculateCurrentDiscrepancyInMeterPerSecond();
+        _discrepancyInSecondsPerKm =
+            _calculateCurrentDiscrepancyInSecondsPerKm();
+        _currentSpeedAsString = _calculateDisplaySpeed();
+        _discrepancyColor = _chooseDisplayColor();
       });
     });
   }
 
+  /*
+  - Initialize GPS Location
+  - Ask for permission if necessary
+   */
   void initPlatformState() async {
     Map<String, double> myLocation;
     try {
+      _permission = await location.hasPermission();
       myLocation = await location.getLocation();
       error = "";
     } on PlatformException catch (e) {
+      print("-------------------------------------Exception" + e.toString());
       if (e.code == 'PERMISSION_DENIED') {
         error = 'Permission denied';
       } else if (e.code == 'PERMISSION_DENIED_NEVER_ASK') {
@@ -86,42 +301,18 @@ class Running_State extends State<Running> {
             'Permission denied - please ask the user to enable it from the app settings';
         myLocation = null;
       }
-
+      //Init GPS with data
       setState(() {
-        currentLocation = myLocation;
-        discrepancy = calculateCurrentDiscrepancy();
+        _currentLocation = myLocation;
+        _startLocation = myLocation;
+        if (myLocation != null) {
+          _discrepancyInMeterPerSecond =
+              _calculateCurrentDiscrepancyInMeterPerSecond();
+        } else {
+          _discrepancyInMeterPerSecond = null;
+        }
       });
-
-
     }
   }
 
-  double calculateCurrentDiscrepancy(){
-     double curSpeedInMeterPerSecond = currentLocation['speed'];
-     double desiredSpeedInMeterPerSecond = 1000 / (minutes*60 + seconds);
-     return curSpeedInMeterPerSecond - desiredSpeedInMeterPerSecond;
-
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    print("Running state build executed: " + connectionEstablished.toString());
-    return new Container(
-      child: new Column(
-        children: <Widget>[
-          new Text(
-              "Connection Established: " + connectionEstablished.toString()),
-          new Text("device: " + device.toString()),
-          new Text("usedCharacteristic: " + usedCharacteristic.toString()),
-          new Text("minutes: " + minutes.toString()),
-          new Text("seconds: " + seconds.toString()),
-          new Text("Latitude: " +  currentLocation['latitude'].toString()),
-          new Text("accuracy: " +  currentLocation['accuracy'].toString()),
-          new Text("altitude: " +  currentLocation['altitude'].toString()),
-          new Text("speed: " +  currentLocation['speed'].toString()),
-          new Text("Discrepancy: " +  discrepancy.toString()),
-        ],
-      ),
-    );
-  }
 }

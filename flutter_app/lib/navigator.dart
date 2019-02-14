@@ -24,7 +24,7 @@ class _navigator_state extends State<navigator> {
 
   @override
   Widget build(BuildContext context) {
-    print("Build Executed: " + _connectionEstablished.toString());
+    print("--------------------------------------------Navigator Build: ${_minutes}");
     return MaterialApp(
       home: DefaultTabController(
         length: 3,
@@ -62,6 +62,7 @@ class _navigator_state extends State<navigator> {
   //Callback function to set minutes
   void _setMinutes(int minutes) {
     setState(() {
+      print("----------------------------Minutes changed to ${minutes}");
       _minutes = minutes;
     });
   }
@@ -69,6 +70,7 @@ class _navigator_state extends State<navigator> {
   //Callbackfunction to set seconds
   void _setSeconds(int seconds) {
     setState(() {
+      print("------------------------------Seconds changed to ${seconds}");
       _seconds = seconds;
     });
   }
