@@ -4,6 +4,7 @@ import 'blue.dart';
 import 'running.dart';
 import 'package:flutter_blue/flutter_blue.dart';
 import 'dart:async';
+import 'package:flutter/services.dart';
 
 class navigator extends StatefulWidget {
   @override
@@ -24,7 +25,10 @@ class _navigator_state extends State<navigator> {
 
   @override
   Widget build(BuildContext context) {
-    print("--------------------------------------------Navigator Build: ${_minutes}");
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitDown,
+      DeviceOrientation.portraitUp,
+    ]);
     return MaterialApp(
       home: DefaultTabController(
         length: 3,

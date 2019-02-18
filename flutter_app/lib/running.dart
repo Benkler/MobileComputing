@@ -5,6 +5,7 @@ import 'dart:async';
 import "alert_dialog.dart";
 import 'package:location/location.dart';
 import 'package:flutter/services.dart';
+import 'result.dart';
 
 class Running extends StatefulWidget {
   //Values for Bluetooth
@@ -21,6 +22,7 @@ class Running extends StatefulWidget {
     print("-------------------------------Create State");
     return new Running_State();
   }
+
   Running(
       {@required this.connectionEstablished,
       @required this.device,
@@ -29,13 +31,8 @@ class Running extends StatefulWidget {
       @required this.seconds});
 }
 
-class Running_State extends State<Running> with AutomaticKeepAliveClientMixin<Running> {
-
-
-
-
-
-
+class Running_State extends State<Running>
+    with AutomaticKeepAliveClientMixin<Running> {
   //GPS
   Map<String, double> _currentLocation = new Map();
   Map<String, double> _startLocation = new Map();
@@ -51,6 +48,18 @@ class Running_State extends State<Running> with AutomaticKeepAliveClientMixin<Ru
   Color _discrepancyColor = Colors.black26;
   bool _trackingStarted = false;
   bool _trackingPaused = false;
+  static const allowedSpeedDiscrepancy = 10;
+
+  //Timer for GPS
+  static const timeout = const Duration(seconds: 1);
+  // static const ms = const Duration(milliseconds: 1);
+
+  //Timer for average
+  int tooFastTime;
+  int tooSlowTime;
+  int perfectSpeedTime;
+  static const interval = const Duration(seconds: 1);
+  Timer averageTimeCalculator;
 
   //----------------------Build Widgets----------------------------
 
@@ -58,7 +67,6 @@ class Running_State extends State<Running> with AutomaticKeepAliveClientMixin<Ru
   Widget build(BuildContext context) {
     super.build(context);
     widget.minutes;
-    print("---------------------------------Build Executed2 With minutes: ${widget.minutes}");
     return new Container(
       child: new Stack(children: <Widget>[
         new Positioned(
@@ -100,12 +108,14 @@ class Running_State extends State<Running> with AutomaticKeepAliveClientMixin<Ru
                 ? 0.5
                 : 0.4,
         child: _trackingPaused
-            ? new Container( //Paused
-          alignment: FractionalOffset.center,
+            ? new Container(
+                //Paused
+                alignment: FractionalOffset.center,
                 color: Colors.black26,
                 child: new Text("Paused!"),
               )
-            : Container( //Running
+            : Container(
+                //Running
                 color: _discrepancyColor,
                 child: new Column(
                   //Running
@@ -168,7 +178,8 @@ class Running_State extends State<Running> with AutomaticKeepAliveClientMixin<Ru
    */
   double _calculateCurrentDiscrepancyInMeterPerSecond() {
     double curSpeedInMeterPerSecond = _currentLocation['speed'];
-    double desiredSpeedInMeterPerSecond = 1000 / (widget.minutes * 60 + widget.seconds);
+    double desiredSpeedInMeterPerSecond =
+        1000 / (widget.minutes * 60 + widget.seconds);
     return curSpeedInMeterPerSecond - desiredSpeedInMeterPerSecond;
   }
 
@@ -201,10 +212,10 @@ class Running_State extends State<Running> with AutomaticKeepAliveClientMixin<Ru
   //---------------------------Handle Tracking State------------------
 
   Color _chooseDisplayColor() {
-    if (_discrepancyInSecondsPerKm < -10) {
+    if (_discrepancyInSecondsPerKm < -allowedSpeedDiscrepancy) {
       //To Fast
       return Colors.redAccent;
-    } else if (_discrepancyInSecondsPerKm > 10) {
+    } else if (_discrepancyInSecondsPerKm > allowedSpeedDiscrepancy) {
       return Colors.blue;
     } else {
       return Colors.lightGreen;
@@ -218,25 +229,36 @@ class Running_State extends State<Running> with AutomaticKeepAliveClientMixin<Ru
     //initSnackBar();
     setState(() {
       _trackingStarted = true;
+      startTimerToCheckGPS();
+      tooSlowTime = 0;
+      tooFastTime = 0;
+      perfectSpeedTime = 0;
+      averageTimeCalculator = averageTimeCalculation();
     });
   }
 
   void _restartTracking() {
     setState(() {
       _trackingPaused = false;
+      startTimerToCheckGPS();
+      averageTimeCalculator = averageTimeCalculation();
     });
   }
 
   void _stopTracking() {
+    averageTimeCalculator.cancel();
     setState(() {
       _trackingStarted = false;
       _trackingPaused = false;
     });
+    Navigator.push(context, MaterialPageRoute(builder: (context) => Result(perfectSpeedTime: perfectSpeedTime,tooFastTime: tooFastTime,tooSlowTime: tooSlowTime,)));
+    // Alert_Dialog.show(context, new Text( "Time for tracking: ${tooFastTime + tooSlowTime + perfectSpeedTime}"), new Text("Too fast: ${tooFastTime}, too slow: ${tooSlowTime}, rightTime: ${perfectSpeedTime} "));
   }
 
   void _pauseTracking() {
     setState(() {
       _trackingPaused = true;
+      averageTimeCalculator.cancel();
     });
   }
 
@@ -244,8 +266,38 @@ class Running_State extends State<Running> with AutomaticKeepAliveClientMixin<Ru
     return true;
   }
 
-  //-------------------------------------Init stuff------------------------------
+  void startTimerToCheckGPS() {
+    new Timer.periodic(timeout, (Timer t) async {
+      Map<String, double> myLocation;
+      try {
+        myLocation = await location.getLocation();
+        //print("-----------------------------------GPS still active");
+      } catch (e) {
+        Alert_Dialog.show(context, new Text("You disabled the GPS"),
+            new Text("Please enable it again!"));
+        _pauseTracking();
+        t.cancel();
+      }
+    });
+  }
 
+  Timer averageTimeCalculation() {
+    return new Timer.periodic(interval, (Timer t) {
+      if (_discrepancyInSecondsPerKm < -allowedSpeedDiscrepancy) {
+        //Too fast
+        tooFastTime++;
+      } else if (_discrepancyInSecondsPerKm > allowedSpeedDiscrepancy) {
+        //Too slow
+        tooSlowTime++;
+      } else {
+        perfectSpeedTime++;
+      }
+    });
+  }
+
+  _calculateAverageTime() {}
+
+  //-------------------------------------Init stuff------------------------------
 
   @override
   bool get wantKeepAlive => true;
@@ -260,7 +312,7 @@ class Running_State extends State<Running> with AutomaticKeepAliveClientMixin<Ru
   @override
   void initState() {
     super.initState();
-  print("---------------------------------Init Executed");
+    print("---------------------------------Init Executed");
     _currentLocation['latitude'] = 0.0;
     _currentLocation['longitude'] = 0.0;
     initPlatformState();
@@ -269,8 +321,6 @@ class Running_State extends State<Running> with AutomaticKeepAliveClientMixin<Ru
     locationSubscription =
         location.onLocationChanged().listen((Map<String, double> result) {
       setState(() {
-        print("--------------Location Changed: " + result['speed'].toString());
-
         _currentLocation = result; //set new location incl. speed
         _discrepancyInMeterPerSecond =
             _calculateCurrentDiscrepancyInMeterPerSecond();
@@ -278,6 +328,7 @@ class Running_State extends State<Running> with AutomaticKeepAliveClientMixin<Ru
             _calculateCurrentDiscrepancyInSecondsPerKm();
         _currentSpeedAsString = _calculateDisplaySpeed();
         _discrepancyColor = _chooseDisplayColor();
+        _calculateAverageTime();
       });
     });
   }
@@ -314,5 +365,4 @@ class Running_State extends State<Running> with AutomaticKeepAliveClientMixin<Ru
       });
     }
   }
-
 }

@@ -109,7 +109,7 @@ class Warning extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return new ExpansionTile(
-      title: new Text("Warnungen"),
+      title: new Text("Warnings"),
       backgroundColor: Colors.black12,
       children: <Widget>[
         new Container(
@@ -117,7 +117,7 @@ class Warning extends StatelessWidget {
           child: new RichText(
               text: new TextSpan(
             text:
-                "Eine zu hohe Belastung kann zu gesundheitlichen Schäden führen. Es ist zu empfehlen, zuerst eine niedrige Durchschnittszeit einzustellen. ",
+                "Excessive physical effort can lead to damage to health. It is recommended to set a low average time first. ",
             style: TextStyle(
               color: Colors.black,
             ),
@@ -132,7 +132,7 @@ class Recommendations extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return new ExpansionTile(
-      title: new Text("Empfehlungen"),
+      title: new Text("Recommendations"),
       backgroundColor: Colors.black12,
       children: <Widget>[
         new Container(
