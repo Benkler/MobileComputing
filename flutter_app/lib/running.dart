@@ -33,6 +33,9 @@ class Running extends StatefulWidget {
 
 class Running_State extends State<Running>
     with AutomaticKeepAliveClientMixin<Running> {
+
+  @override
+  bool get wantKeepAlive => true;
   //GPS
   Map<String, double> _currentLocation = new Map();
   Map<String, double> _startLocation = new Map();
@@ -48,10 +51,10 @@ class Running_State extends State<Running>
   Color _discrepancyColor = Colors.black26;
   bool _trackingStarted = false;
   bool _trackingPaused = false;
-  static const allowedSpeedDiscrepancy = 10;
+  static const allowedSpeedDiscrepancy = 8;
 
   //Timer for GPS
-  static const timeout = const Duration(seconds: 1);
+  static const timeout = const Duration(seconds: 5);
   // static const ms = const Duration(milliseconds: 1);
 
   //Timer for average
@@ -211,6 +214,43 @@ class Running_State extends State<Running>
 
   //---------------------------Handle Tracking State------------------
 
+  _sendSpeedCommandToWearable() {
+    print("Speed");
+    if(widget.connectionEstablished && this._trackingStarted && !this._trackingPaused){
+
+      if (_discrepancyInSecondsPerKm < -allowedSpeedDiscrepancy) {
+        //To Fast
+
+        widget
+            .device
+            .writeCharacteristic(widget.usedCharacteristic, [0x00, 0x00, 0xFF, 0xFF]);
+      } else if (_discrepancyInSecondsPerKm > allowedSpeedDiscrepancy) {
+        //To slow
+
+        widget
+            .device
+            .writeCharacteristic(widget.usedCharacteristic, [0xFF, 0xFF, 0x00, 0x00]);
+      } else {
+
+        widget
+            .device
+            .writeCharacteristic(widget.usedCharacteristic, [0x00, 0x00, 0x00, 0x00]);
+      }
+    }else{
+
+      if (_discrepancyInSecondsPerKm < -allowedSpeedDiscrepancy) {
+        //To Fast
+        print("Too fast");
+      } else if (_discrepancyInSecondsPerKm > allowedSpeedDiscrepancy) {
+        //To slow
+        print("Too Slow");
+      } else {
+        print("korrekt");}
+    }
+
+
+  }
+
   Color _chooseDisplayColor() {
     if (_discrepancyInSecondsPerKm < -allowedSpeedDiscrepancy) {
       //To Fast
@@ -233,20 +273,47 @@ class Running_State extends State<Running>
       tooSlowTime = 0;
       tooFastTime = 0;
       perfectSpeedTime = 0;
-      averageTimeCalculator = averageTimeCalculation();
+      averageTimeCalculator = speedCounter();
     });
+
+    //Add subscription to GPS changes
+    locationSubscription =
+        location.onLocationChanged().listen((Map<String, double> result) {
+          print("------------------------location has changed---------------------------");
+          //Alert_Dialog.show(context, new Text("Location changed "), new Text(""));
+          setState(() {
+            _currentLocation = result; //set new location incl. speed
+            _discrepancyInMeterPerSecond =
+                _calculateCurrentDiscrepancyInMeterPerSecond();
+            _discrepancyInSecondsPerKm =
+                _calculateCurrentDiscrepancyInSecondsPerKm();
+            _currentSpeedAsString = _calculateDisplaySpeed();
+            _discrepancyColor = _chooseDisplayColor();
+            _sendSpeedCommandToWearable();
+
+          });
+        });
   }
 
   void _restartTracking() {
     setState(() {
       _trackingPaused = false;
       startTimerToCheckGPS();
-      averageTimeCalculator = averageTimeCalculation();
+      averageTimeCalculator = speedCounter();
     });
   }
 
+
+  void stopWearable(){
+    if(widget.connectionEstablished){
+      widget
+          .device
+          .writeCharacteristic(widget.usedCharacteristic, [0x00, 0x00, 0x00, 0x00]);
+    }
+  }
   void _stopTracking() {
     averageTimeCalculator.cancel();
+    stopWearable();
     setState(() {
       _trackingStarted = false;
       _trackingPaused = false;
@@ -256,6 +323,7 @@ class Running_State extends State<Running>
   }
 
   void _pauseTracking() {
+    stopWearable();
     setState(() {
       _trackingPaused = true;
       averageTimeCalculator.cancel();
@@ -266,13 +334,17 @@ class Running_State extends State<Running>
     return true;
   }
 
+  /*
+  Periodic timer to check if GPS is still active
+   */
   void startTimerToCheckGPS() {
     new Timer.periodic(timeout, (Timer t) async {
       Map<String, double> myLocation;
       try {
         myLocation = await location.getLocation();
-        //print("-----------------------------------GPS still active");
+      // print("-----------------------------------GPS still active");
       } catch (e) {
+        print(e.toString());
         Alert_Dialog.show(context, new Text("You disabled the GPS"),
             new Text("Please enable it again!"));
         _pauseTracking();
@@ -281,7 +353,10 @@ class Running_State extends State<Running>
     });
   }
 
-  Timer averageTimeCalculation() {
+  /*
+  Calculate how many second too fast/slow/in speed
+   */
+  Timer speedCounter() {
     return new Timer.periodic(interval, (Timer t) {
       if (_discrepancyInSecondsPerKm < -allowedSpeedDiscrepancy) {
         //Too fast
@@ -295,18 +370,19 @@ class Running_State extends State<Running>
     });
   }
 
-  _calculateAverageTime() {}
+
 
   //-------------------------------------Init stuff------------------------------
 
-  @override
-  bool get wantKeepAlive => true;
+
 
   @override
   void dispose() {
+    super.dispose();
+    print("-----------------Dispose Executed");
     locationSubscription?.cancel();
     locationSubscription = null;
-    super.dispose();
+
   }
 
   @override
@@ -317,20 +393,7 @@ class Running_State extends State<Running>
     _currentLocation['longitude'] = 0.0;
     initPlatformState();
 
-    //Add subscription to GPS changes
-    locationSubscription =
-        location.onLocationChanged().listen((Map<String, double> result) {
-      setState(() {
-        _currentLocation = result; //set new location incl. speed
-        _discrepancyInMeterPerSecond =
-            _calculateCurrentDiscrepancyInMeterPerSecond();
-        _discrepancyInSecondsPerKm =
-            _calculateCurrentDiscrepancyInSecondsPerKm();
-        _currentSpeedAsString = _calculateDisplaySpeed();
-        _discrepancyColor = _chooseDisplayColor();
-        _calculateAverageTime();
-      });
-    });
+
   }
 
   /*

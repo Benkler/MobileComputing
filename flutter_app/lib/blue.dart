@@ -6,28 +6,30 @@ import "navigator.dart";
 
 class Blue extends StatefulWidget {
   GlobalKey<ScaffoldState> scaffoldKey;
-  final void Function(BluetoothCharacteristic usedCharacteristic, BluetoothDevice device, bool connectioEstablished) setBluetoothParametersInNavigator;
+  final void Function(
+      BluetoothCharacteristic usedCharacteristic,
+      BluetoothDevice device,
+      bool connectioEstablished) setBluetoothParametersInNavigator;
 
   Blue({this.scaffoldKey, this.setBluetoothParametersInNavigator});
 
   @override
-  State<StatefulWidget> createState() => Blue_State(scaffoldKey: scaffoldKey, setBluetoothParametersInNavigator: setBluetoothParametersInNavigator);
+  State<StatefulWidget> createState() => Blue_State();
 }
 
-class Blue_State extends State<Blue> with AutomaticKeepAliveClientMixin<Blue>  {
-
+class Blue_State extends State<Blue> with AutomaticKeepAliveClientMixin<Blue> {
   @override
   // TODO: implement wantKeepAlive
   bool get wantKeepAlive => true;
 
-  //Constructor
-  Blue_State({@required this.scaffoldKey, @required this.setBluetoothParametersInNavigator});
 
-  //Key to acces main scaffold -> Snackbar
-  GlobalKey<ScaffoldState> scaffoldKey;
 
-  //Set BT device parameters in superclass
-  final void Function(BluetoothCharacteristic usedCharacteristic, BluetoothDevice device, bool connectioEstablished) setBluetoothParametersInNavigator;
+
+  @override
+  void initState() {
+    super.initState();
+
+  }
 
   StreamSubscription _scanSubscription;
 
@@ -72,6 +74,7 @@ class Blue_State extends State<Blue> with AutomaticKeepAliveClientMixin<Blue>  {
     // Subscribe to state changes
     _stateSubscription = flutterBlue.onStateChanged().listen((s) {
       if (s == BluetoothState.off) {
+
         //Aler if BT is turned off
         Alert_Dialog.show(context, new Text("Bluetooth was turned off"),
             new Text("Please turn it on and connect to device!"));
@@ -85,6 +88,7 @@ class Blue_State extends State<Blue> with AutomaticKeepAliveClientMixin<Blue>  {
 
   @override
   void dispose() {
+    print("-----------------Dispose Executed Bluetooth");
     _stateSubscription?.cancel();
     _stateSubscription = null;
     _scanSubscription?.cancel();
@@ -99,43 +103,43 @@ class Blue_State extends State<Blue> with AutomaticKeepAliveClientMixin<Blue>  {
 
   @override
   Widget build(BuildContext context) {
-    // TODO: implement build
+    super.build(context);
     return new Container(
-      margin: EdgeInsets.fromLTRB(0, 50, 0, 0),
+        margin: EdgeInsets.fromLTRB(0, 50, 0, 0),
         child: Column(
-      children: <Widget>[
-        new RaisedButton(
-          onPressed: !this.BLEdeviceConnected
-              ? connectAndDisplaySnackBar
-              : () {}, //Search for device if not connected
-          child: this.BLEdeviceConnected
-              ? connected
-              : (BLEdevicePaired ? paired : notConnected),
-          color: this.BLEdeviceConnected
-              ? green
-              : (BLEdevicePaired ? orange : red),
-        ),
-        new Container(
-            child: this.BLEdeviceConnected | BLEdevicePaired
-                ? new RaisedButton(
-                    onPressed: _cancelConnectiontoBLE,
-                    child: disconnect,
-                  )
-                : Container()),
-        new Container(
-            child: this.BLEdeviceConnected
-                ? new RaisedButton(
-                    onPressed: _testWearable,
-                    color: Colors.white70,
-                    child: Text("Test Wearable"),
-                  )
-                : Container()),
-      ],
-    ));
+          children: <Widget>[
+            new RaisedButton(
+              onPressed: !this.BLEdeviceConnected
+                  ? connectAndDisplaySnackBar
+                  : () {}, //Search for device if not connected
+              child: this.BLEdeviceConnected
+                  ? connected
+                  : (BLEdevicePaired ? paired : notConnected),
+              color: this.BLEdeviceConnected
+                  ? green
+                  : (BLEdevicePaired ? orange : red),
+            ),
+            new Container(
+                child: this.BLEdeviceConnected | BLEdevicePaired
+                    ? new RaisedButton(
+                        onPressed: _cancelConnectiontoBLE,
+                        child: disconnect,
+                      )
+                    : Container()),
+            new Container(
+                child: this.BLEdeviceConnected
+                    ? new RaisedButton(
+                        onPressed: _testWearable,
+                        color: Colors.white70,
+                        child: Text("Test Wearable"),
+                      )
+                    : Container()),
+          ],
+        ));
   }
 
   void _cancelConnectiontoBLE() {
-    setBluetoothParametersInNavigator(null,null,false );
+    widget.setBluetoothParametersInNavigator(null, null, false);
     setState(() {
       _stateSubscription?.cancel();
       _stateSubscription = null;
@@ -156,7 +160,7 @@ class Blue_State extends State<Blue> with AutomaticKeepAliveClientMixin<Blue>  {
   Display Snack Bar while connection is running
    */
   void connectAndDisplaySnackBar() {
-    scaffoldKey.currentState.showSnackBar(new SnackBar(
+    widget.scaffoldKey.currentState.showSnackBar(new SnackBar(
       duration: new Duration(seconds: 3),
       content: new Row(
         children: <Widget>[
@@ -198,7 +202,7 @@ class Blue_State extends State<Blue> with AutomaticKeepAliveClientMixin<Blue>  {
         .listen((scanResult) {
       //Executed whenever new scan result found
 
-      if (scanResult.device.name == "TECO Wearable 5 ") {
+      if (scanResult.device.name == "TECO Wearable 4") {
         this.device = scanResult.device;
         cancelScan(); //cacle scan if device found
         return;
@@ -210,6 +214,7 @@ class Blue_State extends State<Blue> with AutomaticKeepAliveClientMixin<Blue>  {
   End Scan. Connect, if device found!
    */
   void cancelScan() {
+    print("Cancel scan");
     _scanSubscription?.cancel(); //? operator: prevent null pointer access
     _scanSubscription = null;
 
@@ -229,6 +234,16 @@ class Blue_State extends State<Blue> with AutomaticKeepAliveClientMixin<Blue>  {
   Subscribe to connection Change
    */
   _connect() async {
+
+
+    // Disconnect before connect if already connected to prevent reconnect error
+    device.state.then((s) {
+      if(s == BluetoothDeviceState.connected){
+        bluetoothconnection?.cancel();
+        bluetoothconnection = null;
+      }
+    });
+
     // Connect to device
     this.bluetoothconnection =
         flutterBlue.connect(device, timeout: const Duration(seconds: 4)).listen(
@@ -246,13 +261,12 @@ class Blue_State extends State<Blue> with AutomaticKeepAliveClientMixin<Blue>  {
     // Subscribe to connection changes
     deviceStateSubscription = device.onStateChanged().listen((s) {
       setState(() {
-        print(s);
+        print("--------------------------------------------Device state is:" + s.toString());
         deviceState = s;
       });
       if (s == BluetoothDeviceState.connected) {
         _discoverServices();
       } else if (s == BluetoothDeviceState.disconnected) {
-
         _handleDisconnectedDevice();
       }
     });
@@ -274,8 +288,7 @@ class Blue_State extends State<Blue> with AutomaticKeepAliveClientMixin<Blue>  {
     setState(() {
       BLEdeviceConnected = false;
       BLEdevicePaired = true; //Already paired, but corrently not connected
-      setBluetoothParametersInNavigator(usedCharacteristic,device,false );
-
+      widget.setBluetoothParametersInNavigator(usedCharacteristic, device, false);
     });
   }
 
@@ -299,11 +312,8 @@ class Blue_State extends State<Blue> with AutomaticKeepAliveClientMixin<Blue>  {
       BLEdeviceConnected = true;
       BLEdevicePaired = false;
     });
-    setBluetoothParametersInNavigator(usedCharacteristic,device,true );
-
+    widget.setBluetoothParametersInNavigator(usedCharacteristic, device, true);
   }
-
-
 
   /*
   Run Each Motor for about 1 sec
@@ -319,7 +329,21 @@ class Blue_State extends State<Blue> with AutomaticKeepAliveClientMixin<Blue>  {
 
     this
         .device
-        .writeCharacteristic(usedCharacteristic, [0xFF, 0xFF, 0xFF, 0xFF]);
+        .writeCharacteristic(usedCharacteristic, [0x00, 0xFF, 0x00, 0x00]);
+    await Future.delayed(new Duration(seconds: 1)); //kind of thread.sleep()
+    this
+        .device
+        .writeCharacteristic(usedCharacteristic, [0x00, 0x00, 0x00, 0x00]);
+    this
+        .device
+        .writeCharacteristic(usedCharacteristic, [0x00, 0x00, 0xFF, 0x00]);
+    await Future.delayed(new Duration(seconds: 1)); //kind of thread.sleep()
+    this
+        .device
+        .writeCharacteristic(usedCharacteristic, [0x00, 0x00, 0x00, 0x00]);
+    this
+        .device
+        .writeCharacteristic(usedCharacteristic, [0x00, 0x00, 0x00, 0xFF]);
     await Future.delayed(new Duration(seconds: 1)); //kind of thread.sleep()
     this
         .device
