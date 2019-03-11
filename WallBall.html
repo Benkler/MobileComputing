@@ -179,8 +179,8 @@
             refreshID = setInterval(draw, refresh);
             
             //Only works for Chrome
-            ////////////////////////////////////////////////////canvas.webkitRequestFullScreen(); 
-                     
+            canvas.webkitRequestFullScreen(); 
+            
             
         }
         
@@ -221,6 +221,7 @@
                 canvas.style.height = heightval + "px";
                 canvas.style.width = widthval + "px";
 			}		
+           
 		}
 		
 		function init(){
@@ -243,7 +244,7 @@
             ballY = canvas.height / 2;
             
             ballSpeedX = 0;
-            ballSpeedY  = ballSpeedMax;
+            ballSpeedY  = -ballSpeedMax;
         
         
 			accelx = 0.0;
@@ -549,7 +550,7 @@
                 switch (window.orientation) {
                 
                     case 0:<!-- Normal Portrait: We want only landscape specific calculation: Use case 90°-->
-                       accelx = event.accelerationIncludingGravity.y;;
+                       accelx = event.accelerationIncludingGravity.x * (-1);
                         break;
                     case 90:<!-- Normal  Landscape-->
                         accelx = event.accelerationIncludingGravity.y;
@@ -559,7 +560,7 @@
                         break;
                   
                     case 180:<!-- Inverse Portrait: We want only landscape specific calculation: Use case -90°-->
-                        accelx = event.accelerationIncludingGravity.y * (-1);
+                        accelx = event.accelerationIncludingGravity.x ;
                         break;
                 }
             }, true);
